@@ -253,4 +253,29 @@ public class ProfileController {
         return "redirect:/profile/{userUrl}";
     }
 
+    @PostMapping("/profile/{username}/change-password")
+    public String changePassword(@PathVariable("username") String username, 
+                                 @RequestParam("newPassword") String newPassword, 
+                                 HttpSession session, RedirectAttributes ra) {
+        try {
+            User loggedInUser = (User) session.getAttribute("logInUser"); 
+
+            if(profileService.checkIfOwner(loggedInUser, username)) { 
+                User targetUser = profileService.getProfile(username);
+                targetUser.setPassword(newPassword); // Set mật khẩu mới
+                userRepository.save(targetUser); // Lưu vào Database
+                ra.addFlashAttribute("message", "Đổi mật khẩu thành công! Hãy ghi nhớ pass mới nhé.");
+            } 
+            else {
+                ra.addFlashAttribute("message", "Bạn không có quyền đổi mật khẩu của người này!");
+            }
+        } 
+        catch(Exception e) {
+            ra.addFlashAttribute("message", "Lỗi: " + e.getMessage());
+        }
+
+        ra.addAttribute("userUrl", username); 
+        return "redirect:/profile/{userUrl}";
+    }
+
 }

@@ -140,6 +140,8 @@ public class AdminService {
     public void completeMatch(Long MatchID, Integer score1, Integer score2, Integer pen1, Integer pen2){
         Match match = matchRepository.findById(MatchID).orElseThrow(() -> new RuntimeException("Không tìm thấy trận đấu!"));
 
+        match.setPlayer1Elo(match.getPlayer1().getElo());
+        match.setPlayer2Elo(match.getPlayer2().getElo());
         match.setPlayer1Score(score1);
         match.setPlayer2Score(score2);
         match.setPlayer1Pen(pen1);
@@ -246,8 +248,6 @@ public class AdminService {
         Match match = new Match();
         match.setPlayer1(user1);
         match.setPlayer2(user2);
-        match.setPlayer1Elo(match.getPlayer1().getElo());
-        match.setPlayer2Elo(match.getPlayer2().getElo());
         match.setUpcoming(true);
         matchRepository.save(match);
     }
@@ -262,6 +262,7 @@ public class AdminService {
 
         User newUser = new User();
         newUser.setUsername(username);
+        newUser.setPassword("123");
         newUser.setElo(initialElo);
         newUser.setRole("PLAYER");
 
