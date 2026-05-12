@@ -44,6 +44,16 @@
         .ov-lbl { font-size: 0.75rem; color: #666; text-transform: uppercase; font-weight: 600; margin-bottom: 5px; }
         .ov-val { font-size: 1.8rem; font-weight: 700; line-height: 1; }
 
+        /* --- BỘ LỌC THỜI GIAN --- */
+        .chart-controls-wrapper { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 10px; }
+        .chart-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn-filter { background: #111; color: #aaa; border: 1px solid #333; border-radius: 8px; padding: 6px 14px; font-size: 0.85rem; font-weight: 600; transition: 0.2s; cursor: pointer; }
+        .btn-filter:hover { background: #222; color: #fff; }
+        .btn-filter.active { background: var(--fm-green); color: #000; border-color: var(--fm-green); }
+        .custom-filter { display: flex; align-items: center; gap: 8px; }
+        .custom-filter input { background: #111; border: 1px solid #333; color: #fff; border-radius: 8px; padding: 5px 10px; font-size: 0.85rem; width: 110px; text-align: center; }
+        .custom-filter input:focus { outline: none; border-color: var(--fm-green); }
+
         /* --- MATCH ROW --- */
         .match-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; border-bottom: 1px solid #2d2d2d; text-decoration: none !important; transition: 0.2s; cursor: pointer; }
         .match-row:hover { background: #222; border-radius: 8px; border-bottom: 1px solid transparent; }
@@ -130,6 +140,13 @@
                     <div class="profile-bio">
                         <span th:text="${user.description != null && !user.description.isEmpty() ? user.description : 'Người chơi này chưa có mô tả.'}"></span>
                         <i th:if="${isOwner}" class="fas fa-pen ms-2" style="font-size: 0.7rem; cursor: pointer; color: #bbb;" data-bs-toggle="modal" data-bs-target="#bioModal"></i>
+                    </div>
+                    
+                    <div th:if="${isOwner}" class="mt-3">
+                        <form th:action="@{/profile/{username}/change-password(username=${user.username})}" method="POST" class="d-flex align-items-center gap-2" style="max-width: 300px;">
+                            <input type="password" name="newPassword" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Nhập mật khẩu mới..." required minlength="1">
+                            <button type="submit" class="btn btn-sm btn-outline-warning text-nowrap">Đổi Password</button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -278,7 +295,6 @@
                         <div class="m-tour-col" th:text="${m.tournament != null ? m.tournament.name : 'Giao hữu'}"></div>
                     </div>
                     <div th:if="${#lists.isEmpty(recentMatches)}" class="text-muted small italic text-center py-2">Chưa có dữ liệu.</div>
-
                     <button class="btn-load-more" onclick="alert('Gọi API phân trang ngầm để tải thêm 10 trận.')">Xem thêm trận đấu cũ hơn</button>
                 </div>
             </div>
@@ -303,7 +319,22 @@
                 </div>
 
                 <div class="info-box">
-                    <div class="info-title">Biểu đồ ELO</div>
+                    <div class="chart-controls-wrapper">
+                        <div class="info-title m-0 border-0 p-0">Biểu đồ ELO</div>
+                        
+                        <div class="chart-filters">
+                            <button class="btn-filter" id="btn-7d" onclick="filterChartByDays(7, this)">1 Tuần</button>
+                            <button class="btn-filter" id="btn-30d" onclick="filterChartByDays(30, this)">1 Tháng</button>
+                            <button class="btn-filter" id="btn-365d" onclick="filterChartByDays(365, this)">1 Năm</button>
+                            <button class="btn-filter active" id="btn-all" onclick="filterChartByDays('all', this)">Tất cả</button>
+                            
+                            <div class="custom-filter ms-2">
+                                <input type="number" id="customMonths" placeholder="Số tháng..." min="1" onkeypress="if(event.key === 'Enter') applyCustomFilter()">
+                                <button class="btn-filter" id="btn-custom" onclick="applyCustomFilter()">Lọc</button>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div style="height: 250px;">
                         <canvas id="eloChart"></canvas>
                     </div>
@@ -335,8 +366,10 @@
                     <div th:each="r : ${upcomingTours}" class="match-row" th:data-url="@{|/tournament-detail/${r.tournament.name}|}" onclick="window.location.href=this.getAttribute('data-url')">
                         <div class="d-flex align-items-center gap-3">
                             <div class="tour-banner-container">
-                                <img th:if="${r.tournament.banner != null}" th:src="@{'/uploads/tournaments/' + ${r.tournament.banner}}" class="tour-banner-img">
-                                <i th:if="${r.tournament.banner == null}" class="fas fa-trophy text-secondary"></i>
+                                <img th:if="${r.tournament.banner != null and !r.tournament.banner.isEmpty()}" 
+                                     th:src="@{'/uploads/tournaments/' + ${r.tournament.banner}}" 
+                                     class="tour-banner-img"
+                                     onerror="this.style.display='none'"> <i th:if="${r.tournament.banner == null or r.tournament.banner.isEmpty()}" class="fas fa-trophy text-secondary"></i>
                             </div>
                             <span class="text-white fw-bold" th:text="${r.tournament.name}"></span>
                         </div>
@@ -352,8 +385,10 @@
                     <div th:each="r : ${finishedTours}" class="match-row" th:data-url="@{|/tournament-detail/${r.tournament.name}|}" onclick="window.location.href=this.getAttribute('data-url')">
                         <div class="d-flex align-items-center gap-3">
                             <div class="tour-banner-container">
-                                <img th:if="${r.tournament.banner != null}" th:src="@{'/uploads/tournaments/' + ${r.tournament.banner}}" class="tour-banner-img">
-                                <i th:if="${r.tournament.banner == null}" class="fas fa-trophy text-secondary"></i>
+                                <img th:if="${r.tournament.banner != null and !r.tournament.banner.isEmpty()}" 
+                                     th:src="@{'/uploads/tournaments/' + ${r.tournament.banner}}" 
+                                     class="tour-banner-img"
+                                     onerror="this.style.display='none'"> <i th:if="${r.tournament.banner == null or r.tournament.banner.isEmpty()}" class="fas fa-trophy text-secondary"></i>
                             </div>
                             <div class="d-flex flex-column">
                                 <span class="text-white fw-bold" th:text="${r.tournament.name}"></span>
@@ -454,30 +489,36 @@
     <th:block th:replace="~{fragments/header :: scripts}"></th:block>
     
     <script th:inline="javascript">
-        const labels = /*[[${eloChartLabels}]]*/ [];
-        const dataPoints = /*[[${eloChartData}]]*/ [];
+        // 1. LẤY DỮ LIỆU TỪ BACKEND
+        const rawLabels = /*[[${eloChartLabels}]]*/ [];
+        const rawDataPoints = /*[[${eloChartData}]]*/ [];
         const currentElo = /*[[${user.elo}]]*/ 1000;
         
-        if(labels.length > 0) {
-            // 1. Chuyển đổi dữ liệu lịch sử
-            let chartData = labels.map((timeStr, index) => ({
+        // Mảng chứa toàn bộ dữ liệu gốc (không bao giờ bị ghi đè)
+        let fullChartData = [];
+        let myEloChart = null;
+
+        if (rawLabels.length > 0) {
+            // Chuẩn hóa dữ liệu sang dạng Obj {x: Date, y: Elo}
+            fullChartData = rawLabels.map((timeStr, index) => ({
                 x: new Date(timeStr),
-                y: dataPoints[index]
+                y: rawDataPoints[index]
             }));
 
-            // 2. TỰ ĐỘNG THÊM MỐC THỜI ĐIỂM HIỆN TẠI
-            // Giúp biểu đồ kéo dài đến "Bây giờ" thay vì dừng ở trận đấu cuối
-            chartData.push({
+            // Ép thêm mốc thời điểm hiện tại (ngay lúc này) để line đồ thị dài ra tới hiện tại
+            fullChartData.push({
                 x: new Date(),
                 y: currentElo
             });
 
-            new Chart(document.getElementById('eloChart'), {
+            // 2. KHỞI TẠO BIỂU ĐỒ LẦN ĐẦU
+            const ctx = document.getElementById('eloChart').getContext('2d');
+            myEloChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     datasets: [{ 
                         label: 'Elo', 
-                        data: chartData, 
+                        data: [...fullChartData], // Clone mảng gốc
                         borderColor: '#11cd76', 
                         backgroundColor: 'rgba(17, 205, 118, 0.1)', 
                         fill: true, 
@@ -494,7 +535,6 @@
                         tooltip: {
                             callbacks: {
                                 title: function(context) {
-                                    // Tooltip vẫn hiện giờ phút để xem chi tiết
                                     const d = context[0].raw.x;
                                     return d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'});
                                 }
@@ -509,15 +549,13 @@
                         x: { 
                             type: 'time', 
                             time: {
-                                unit: 'day', // ÉP BUỘC ĐƠN VỊ LÀ NGÀY
-                                displayFormats: {
-                                    day: 'dd/MM/yyyy' // CHỈ HIỆN NGÀY THÁNG NĂM
-                                }
+                                unit: 'day',
+                                displayFormats: { day: 'dd/MM/yyyy' }
                             },
                             grid: { display: false }, 
                             ticks: { 
                                 color: '#888',
-                                maxTicksLimit: 5,
+                                maxTicksLimit: 6,
                                 maxRotation: 0,
                                 autoSkip: true
                             } 
@@ -526,6 +564,73 @@
                 }
             });
         }
+
+        // 3. HÀM LỌC THEO SỐ NGÀY
+        function filterChartByDays(days, btnElement) {
+            if (!myEloChart || fullChartData.length === 0) return;
+
+            // Xử lý giao diện nút bấm
+            document.querySelectorAll('.btn-filter').forEach(btn => btn.classList.remove('active'));
+            if (btnElement) {
+                btnElement.classList.add('active');
+                // Nếu bấm nút mặc định, xóa trắng ô nhập custom
+                if (btnElement.id !== 'btn-custom') {
+                    document.getElementById('customMonths').value = '';
+                }
+            }
+
+            // Trường hợp chọn "Tất cả"
+            if (days === 'all') {
+                myEloChart.data.datasets[0].data = [...fullChartData];
+                myEloChart.update();
+                return;
+            }
+
+            // Lấy thời điểm hiện tại và lùi lại `days` ngày
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - days);
+
+            // Xử lý an toàn: Lọc mảng
+            // Lấy những điểm có ngày lớn hơn mốc cắt, VÀ luôn giữ lại điểm đầu tiên của chuỗi (dù nó cũ hơn) để nét vẽ không bị lơ lửng giữa chừng.
+            let filteredData = fullChartData.filter(item => item.x >= cutoffDate);
+            
+            // Nếu không có điểm nào trong khoảng tgian đó (tài khoản quá cũ không chơi), 
+            // hoặc thời gian lập tk nhỏ hơn mốc lọc, ta lấy điểm gần nhất phía trước nhét vào để vẽ đường đi ngang
+            if (filteredData.length === 0 || (filteredData.length > 0 && filteredData[0].x > cutoffDate)) {
+                 const olderPoints = fullChartData.filter(item => item.x < cutoffDate);
+                 if (olderPoints.length > 0) {
+                     // Lấy điểm ngay liền kề trước đó
+                     const pointToInject = {...olderPoints[olderPoints.length - 1]};
+                     // Ép ngày của nó thành đúng vạch mốc để nét vẽ liền mạch
+                     pointToInject.x = cutoffDate; 
+                     filteredData.unshift(pointToInject);
+                 }
+            }
+
+            // Nếu rỗng tuếch (Tài khoản mới tinh, không có trận nào cũ hơn cutoffDate)
+            if (filteredData.length === 0) {
+                filteredData = [...fullChartData]; // Đành hiện hết
+            }
+
+            myEloChart.data.datasets[0].data = filteredData;
+            myEloChart.update();
+        }
+
+        // 4. HÀM LỌC TÙY CHỈNH KHI NHẬP SỐ THÁNG
+        function applyCustomFilter() {
+            const monthsInput = document.getElementById('customMonths').value;
+            const months = parseInt(monthsInput);
+            
+            if (!isNaN(months) && months > 0) {
+                // Đổi tháng sang ngày (tương đối x30 ngày)
+                const days = months * 30; 
+                const btnCustom = document.getElementById('btn-custom');
+                filterChartByDays(days, btnCustom);
+            } else {
+                alert('Vui lòng nhập một số tháng hợp lệ lớn hơn 0.');
+            }
+        }
     </script>
 </body>
 </html>
+

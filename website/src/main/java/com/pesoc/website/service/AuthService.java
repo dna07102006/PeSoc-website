@@ -12,18 +12,11 @@ public class AuthService {
 
     public User authenticate(String username, String password) {
         User user = userRepository.findByUsername(username);
-
-        if (user == null){
-            return null;
+    
+        if (user != null && password != null && password.equals(user.getPassword())) {
+            return user; 
         }
-        if ("ADMIN".equals(user.getRole())){
-            if (password != null && password.equals(user.getPassword())) {
-                return user;
-            } 
-            else {
-                return null;
-            }
-        }
-        return user;
+        
+        return null;
     }
 }
