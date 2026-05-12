@@ -57,7 +57,7 @@
 
                 <div class="mb-4">
                     <label class="form-label">Nội dung bài viết <span class="text-danger">*</span></label>
-                    <textarea name="content" class="form-control" rows="10" placeholder="Viết nội dung của bạn ở đây..." required></textarea>
+                    <textarea id="editor" name="content" class="form-control" rows="10" placeholder="Viết nội dung của bạn ở đây..."></textarea>
                 </div>
 
                 <div class="mb-4">
@@ -72,5 +72,49 @@
     </div>
 
     <th:block th:replace="~{fragments/header :: scripts}"></th:block>
+
+    <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
+    
+    <script>
+        ClassicEditor
+            .create(document.querySelector('#editor'), {
+                // Thêm đoạn cấu hình này để bật tính năng Upload từ máy tính
+                ckfinder: {
+                    uploadUrl: '/api/image/upload' // Trỏ đúng vào API Java bạn vừa tạo
+                }
+            })
+            .then(editor => {
+                editor.ui.view.editable.element.style.minHeight = '300px';
+            })
+            .catch(error => {
+                console.error('Có lỗi khi khởi tạo CKEditor:', error);
+            });
+    </script>
+    
+    <style>
+        .ck-editor__editable {
+            background-color: #000 !important;
+            color: #fff !important;
+            border-color: #333 !important;
+        }
+        .ck-toolbar {
+            background-color: #1a1a1a !important;
+            border-color: #333 !important;
+        }
+        .ck-button {
+            color: #ccc !important;
+        }
+        .ck-button:hover, .ck-button.ck-on {
+            background-color: #333 !important;
+            color: #fff !important;
+        }
+        .ck.ck-editor__main>.ck-editor__editable:not(.ck-focused) {
+            border-color: #333 !important;
+        }
+        .ck.ck-editor__main>.ck-editor__editable.ck-focused {
+            border-color: var(--fm-green) !important;
+            box-shadow: none !important;
+        }
+    </style>
 </body>
 </html>

@@ -14,14 +14,21 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+
+import com.pesoc.website.model.Article;
 import com.pesoc.website.model.EloHistory;
 import com.pesoc.website.model.Match;
 import com.pesoc.website.model.TournamentRanking;
 import com.pesoc.website.model.User;
+import com.pesoc.website.repository.ArticleRepository;
 import com.pesoc.website.repository.MatchRepository;
 import com.pesoc.website.repository.TournamentRankingRepository;
 import com.pesoc.website.service.ProfileService;
@@ -41,6 +48,8 @@ public class ProfileController {
     private TournamentRankingRepository rankingRepository;
     @Autowired
     private MatchRepository matchRepository;
+    @Autowired
+    private ArticleRepository articleRepository;
 
     ProfileController(UserRepository userRepository) {
         this.userRepository = userRepository;
@@ -149,6 +158,9 @@ public class ProfileController {
         }
         model.addAttribute("globalRank", globalRank);
         
+        Pageable pageable = PageRequest.of(0, 3, Sort.by("createdAt").descending());
+        Page<Article> authorArticles = articleRepository.findByAuthor(userRepository.findByUsername(username), pageable);
+        model.addAttribute("authorArticles", authorArticles);
         return "profile";
     }
 

@@ -86,7 +86,7 @@
         <div class="match-banner-card">
             <div class="match-banner-top">
                 <div class="match-tour">
-                    <a th:if="${match.tournament != null}" th:href="@{'/tournament/' + ${match.tournament.id}}" class="match-tour-link">
+                    <a th:if="${match.tournament != null}" th:href="@{/tournament-detail/{name}(name=${match.tournament.name})}" class="match-tour-link">
                         <i class="fas fa-trophy text-warning me-1"></i> [[${match.tournament.name}]]
                     </a>
                     <span th:if="${match.tournament == null}" class="match-tour-link" style="cursor: default;">

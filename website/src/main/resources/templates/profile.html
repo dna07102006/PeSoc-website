@@ -54,6 +54,19 @@
         .custom-filter input { background: #111; border: 1px solid #333; color: #fff; border-radius: 8px; padding: 5px 10px; font-size: 0.85rem; width: 110px; text-align: center; }
         .custom-filter input:focus { outline: none; border-color: var(--fm-green); }
 
+        /* --- ARTICLE MINI ROW (TÁC GIẢ CỦA) --- */
+        .article-mini-row { display: flex; align-items: center; gap: 15px; padding: 12px 15px; border-bottom: 1px solid #2d2d2d; text-decoration: none !important; transition: 0.2s; cursor: pointer; }
+        .article-mini-row:last-child { border-bottom: none; }
+        .article-mini-row:hover { background: #222; border-radius: 8px; border-bottom-color: transparent; }
+        
+        .am-thumb { width: 110px; height: 70px; flex-shrink: 0; border-radius: 10px; overflow: hidden; border: 1px solid #333; background: #000; }
+        .am-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        
+        .am-info { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+        .am-title { color: #fff; font-size: 1.05rem; font-weight: 700; font-family: 'Roboto', sans-serif; line-height: 1.3; margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; transition: 0.2s; text-transform: lowercase; } 
+        .article-mini-row:hover .am-title { color: var(--fm-green); }
+        .am-date { color: #888; font-size: 0.8rem; font-weight: 500; }
+
         /* --- MATCH ROW --- */
         .match-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; border-bottom: 1px solid #2d2d2d; text-decoration: none !important; transition: 0.2s; cursor: pointer; }
         .match-row:hover { background: #222; border-radius: 8px; border-bottom: 1px solid transparent; }
@@ -238,6 +251,27 @@
                             <div th:if="${#lists.isEmpty(upcomingMatches)}" class="text-muted small italic text-center p-3">Không có lịch thi đấu.</div>
                         </div>
                     </div>
+                </div>
+
+                <div class="info-box mt-4">
+                    <div class="info-title">Tác giả của</div>
+                    
+                    <div id="author-articles-container">
+                        <a th:each="article : ${authorArticles.content}" th:href="@{'/news/' + ${article.id}}" class="article-mini-row">
+                            <div class="am-thumb">
+                                <img th:if="${article.thumbnail != null}" th:src="@{'/uploads/news/' + ${article.thumbnail}}">
+                                <img th:if="${article.thumbnail == null}" src="/images/news/default.jpg">
+                            </div>
+                            <div class="am-info">
+                                <div class="am-title" th:text="${article.title}">Tiêu đề bài viết</div>
+                                <div class="am-date" th:text="${#temporals.format(article.createdAt, 'dd/MM/yyyy HH:mm')}"></div>
+                            </div>
+                        </a>
+                        
+                        <div th:if="${#lists.isEmpty(authorArticles.content)}" class="text-muted small italic text-center py-3">Người chơi chưa có bài viết nào.</div>
+                    </div>
+
+                    <button th:if="${authorArticles.totalPages > 1}" class="btn-load-more mt-3" id="btn-load-articles" onclick="loadMoreArticles()">Xem thêm bài viết cũ hơn</button>
                 </div>
             </div>
 
@@ -629,6 +663,73 @@
             } else {
                 alert('Vui lòng nhập một số tháng hợp lệ lớn hơn 0.');
             }
+        }
+
+        // XỬ LÝ LOAD MORE BÀI VIẾT
+        let currentArticlePage = 0;
+        const authorUsernameForNews = /*[[${user.username}]]*/ ''; 
+
+        function loadMoreArticles() {
+            currentArticlePage++;
+            const btn = document.getElementById('btn-load-articles');
+            const container = document.getElementById('author-articles-container');
+
+            btn.innerText = "Đang tải...";
+            btn.disabled = true;
+
+            // Gọi API lấy thêm bài viết (Backend cần chuẩn bị API này)
+            // Gọi API lấy thêm bài viết
+            fetch(`/api/profile/${authorUsernameForNews}/articles?page=${currentArticlePage}&size=3`)
+                .then(res => res.json())
+                .then(data => {
+                    console.log("Dữ liệu API trả về:", data); // In ra console F12 để sếp dễ soi lỗi nếu có
+
+                    if (data.content && data.content.length > 0) {
+                        data.content.forEach(article => {
+                            const thumbUrl = article.thumbnail ? `/uploads/news/${article.thumbnail}` : '/images/news/default.jpg';
+                            
+                            // 1. FIX LỖI NGÀY THÁNG (Chấp cả mảng số lẫn chuỗi chữ)
+                            let dateObj;
+                            if (Array.isArray(article.createdAt)) {
+                                // Nếu Spring Boot trả về mảng [Năm, Tháng, Ngày, Giờ, Phút]
+                                dateObj = new Date(article.createdAt[0], article.createdAt[1] - 1, article.createdAt[2], article.createdAt[3], article.createdAt[4]);
+                            } else {
+                                // Nếu trả về chuỗi ISO string bình thường
+                                dateObj = new Date(article.createdAt);
+                            }
+                            
+                            const dateStr = `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth()+1).padStart(2, '0')}/${dateObj.getFullYear()} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+
+                            // 2. BẢO HIỂM TIÊU ĐỀ
+                            const titleStr = article.title ? article.title : "Bài viết không có tiêu đề";
+
+                            const html = `
+                                <a href="/news/${article.id}" class="article-mini-row">
+                                    <div class="am-thumb">
+                                        <img src="${thumbUrl}">
+                                    </div>
+                                    <div class="am-info">
+                                        <div class="am-title">${titleStr}</div>
+                                        <div class="am-date">${dateStr}</div>
+                                    </div>
+                                </a>
+                            `;
+                            container.insertAdjacentHTML('beforeend', html);
+                        });
+                    }
+
+                    if (data.last) {
+                        btn.style.display = 'none'; // Nếu là trang cuối thì ẩn nút đi
+                    } else {
+                        btn.innerText = "Xem thêm bài viết cũ hơn";
+                        btn.disabled = false;
+                    }
+                })
+                .catch(err => {
+                    console.error("Lỗi tải bài viết:", err);
+                    btn.innerText = "Lỗi. Thử lại?";
+                    btn.disabled = false;
+                });
         }
     </script>
 </body>

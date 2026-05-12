@@ -7,6 +7,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Data
 @Entity
 @Table(name = "articles")
@@ -29,9 +31,11 @@ public class Article {
     
     @ManyToOne
     @JoinColumn(name = "author_id")
+    @JsonIgnore
     private User author;   
     
     @OneToMany(mappedBy = "article", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<Comment> comments;
 
     // Trong Article.java thêm:
