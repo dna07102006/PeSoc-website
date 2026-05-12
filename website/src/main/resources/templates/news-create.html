@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/header :: head}"></th:block>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Roboto', sans-serif !important; background-color: #000000; color: #ffffff; margin: 0; }
+        .wide-container { max-width: 800px !important; margin: 0 auto; padding: 20px; }
+
+        :root { --fm-green: #11cd76; }
+
+        .create-card { background: #1a1a1a; border-radius: 12px; border: 1px solid #2d2d2d; padding: 30px; margin-top: 20px; }
+        .cc-title { font-size: 1.5rem; font-weight: 800; color: #fff; margin-bottom: 25px; border-bottom: 1px solid #333; padding-bottom: 15px; }
+
+        .form-label { font-size: 0.8rem; font-weight: 700; color: #888; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
+        
+        /* ĐÃ FIX: Khoanh vùng .form-control chỉ áp dụng bên trong khối .create-card */
+        .create-card .form-control { background: #000 !important; border: 1px solid #333 !important; color: #fff !important; border-radius: 8px; padding: 12px 15px; font-size: 0.95rem; }
+        .create-card .form-control:focus { border-color: var(--fm-green) !important; box-shadow: none !important; }
+        
+        .form-text { color: #666; font-size: 0.75rem; margin-top: 5px; }
+
+        .btn-submit { background: var(--fm-green); color: #000; font-weight: 800; text-transform: uppercase; padding: 12px; border-radius: 8px; border: none; transition: 0.2s; width: 100%; margin-top: 15px; }
+        .btn-submit:hover { background: #0ea860; color: #fff; }
+    </style>
+</head>
+<body>
+    <div th:replace="~{fragments/header :: navbar}"></div>
+    
+    <div class="wide-container">
+        <a th:href="@{/news}" class="text-secondary text-decoration-none fw-bold" style="font-size: 0.9rem;">
+            <i class="fas fa-arrow-left me-1"></i> Hủy và quay lại
+        </a>
+
+        <div class="create-card">
+            <div class="cc-title"><i class="fas fa-pen-nib text-warning me-2"></i> Viết bài mới</div>
+            
+            <form th:action="@{/news/create}" method="post" enctype="multipart/form-data">
+                
+                <div class="mb-4">
+                    <label class="form-label">Ảnh bìa (Thumbnail)</label>
+                    <input type="file" name="thumbnailFile" class="form-control" accept="image/*">
+                    <div class="form-text">Khuyên dùng ảnh tỉ lệ 16:9 để hiển thị đẹp nhất.</div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Tiêu đề bài viết <span class="text-danger">*</span></label>
+                    <input type="text" name="title" class="form-control" placeholder="Nhập tiêu đề..." required>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Tóm tắt ngắn <span class="text-danger">*</span></label>
+                    <textarea name="summary" class="form-control" rows="2" placeholder="Vài dòng tóm tắt cho mấy thằng lười đọc..." required maxlength="500"></textarea>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Nội dung bài viết <span class="text-danger">*</span></label>
+                    <textarea name="content" class="form-control" rows="10" placeholder="Viết nội dung của bạn ở đây..." required></textarea>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Hashtag</label>
+                    <input type="text" name="tagsInput" class="form-control" placeholder="VD: chiến thuật, web đẹp quá, arsenal mua tài, ...">
+                    <div class="form-text">Nhập các từ khóa cách nhau bằng dấu phẩy (,). Không cần gõ dấu #.</div>
+                </div>
+
+                <button type="submit" class="btn-submit">ĐĂNG BÀI VIẾT</button>
+            </form>
+        </div>
+    </div>
+
+    <th:block th:replace="~{fragments/header :: scripts}"></th:block>
+</body>
+</html>

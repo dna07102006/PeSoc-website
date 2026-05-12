@@ -1,31 +1,30 @@
 package com.pesoc.website.model;
 
-import org.springframework.boot.convert.DataSizeUnit;
-import jakarta.persistence.*;
+import java.util.List;
+import jakarta.persistence.*; 
 import lombok.Data;
 
+@Data
 @Entity
 @Table(name = "users")
-@Data
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private Long id;
 
+    @Column(unique = true, nullable = false)
     private String username;
+
+    private String pesUsername;
     private String password;
+    private Integer elo; 
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    private List<EloHistory> eloHistories;
+    
     private String role;
 
-    @Override
-    public boolean equals(Object obj){
-        if(this == obj){
-            return true;
-        }
-        if(!(obj instanceof User)){
-            return false;
-        }
-        User other = (User) obj;
+    private String description;
 
-        return this.username != null && this.username.equals(other.username);
-    }
+    private String avatar;
 }

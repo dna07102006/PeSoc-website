@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/header :: head}"></th:block>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Roboto', sans-serif !important; background-color: #000000; color: #ffffff; margin: 0; overflow-x: hidden; }
+        /* Nhường chỗ cho header cố định */
+        body { padding-top: 75px !important; }
+        :root { --fm-green: #11cd76; }
+
+        /* --- HERO BANNER --- */
+        .about-hero { 
+            position: relative; 
+            padding: 20px 20px 180px 20px; 
+            text-align: center; 
+            background-image: url('/images/news/default.jpg');
+            background-size: cover;
+            background-position: center;
+            border-bottom: 1px solid #333;
+        }
+        .hero-title { 
+            font-size: 4rem; 
+            font-weight: 900; 
+            color: #fff; 
+            margin-bottom: 15px; 
+            text-transform: uppercase; 
+            letter-spacing: 2px; 
+            text-shadow: 3px 3px 10px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.8);
+        }
+        .hero-title span { color: var(--fm-green); }
+
+        .wide-container { max-width: 1000px; margin: 0 auto; padding: 60px 20px; }
+        .section-title { font-size: 1.8rem; font-weight: 800; text-align: center; margin-bottom: 40px; text-transform: uppercase; color: #fff; border-bottom: 1px solid #333; padding-bottom: 15px; }
+
+        /* --- THỐNG KÊ --- */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 80px; }
+        .stat-card { background: #1a1a1a; border: 1px solid #2d2d2d; border-radius: 12px; padding: 30px 20px; text-align: center; }
+        .stat-icon { font-size: 2rem; color: var(--fm-green); margin-bottom: 15px; }
+        .stat-number { font-size: 2.5rem; font-weight: 900; color: #fff; margin-bottom: 5px; }
+        .stat-label { font-size: 0.9rem; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* --- STORY SECTION MỚI --- */
+        .story-section { margin-bottom: 40px; }
+        .story-content { font-family: 'Roboto', sans-serif; font-size: 1.4rem; color: #e5e5e5; line-height: 1.8; font-weight: 500; }
+        .story-content p { margin-bottom: 25px; } 
+
+        /* Layout cho đoạn 2 có ảnh bên cạnh */
+        .story-row { display: flex; align-items: center; gap: 40px; margin-bottom: 30px; }
+        .story-row p { flex: 1; margin-bottom: 0; }
+        .story-side-img { width: 320px; height: 320px; flex-shrink: 0; border-radius: 20px; overflow: hidden; border: 2px solid #333; }
+        .story-side-img img { width: 100%; height: 100%; object-fit: cover; transition: 0.5s; }
+        .story-side-img:hover img { transform: scale(1.1); }
+
+        /* Ảnh ngang sau story */
+        .story-banner-wide { width: 100%; border-radius: 15px; margin-bottom: 80px; border: 1px solid #333; display: block; }
+
+        /* --- ĐỘI NGŨ ADMIN --- */
+        .team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px; margin-bottom: 60px; }
+        .team-card { background: transparent; padding: 20px; text-align: center; transition: 0.2s; }
+        .team-profile-link { text-decoration: none; display: block; }
+        .team-avatar { width: 100px; height: 100px; border-radius: 50%; margin: 0 auto 15px auto; overflow: hidden; transition: 0.3s; background: #111; display: flex; align-items: center; justify-content: center; }
+        .team-profile-link:hover .team-avatar { transform: scale(1.05); }
+        .team-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .team-avatar i { font-size: 2.5rem; color: #444; } 
+        .team-name { font-size: 1.2rem; font-weight: 800; color: #fff; margin-bottom: 5px; transition: 0.2s; }
+        .team-profile-link:hover .team-name { color: var(--fm-green); }
+        .team-role { font-size: 0.85rem; color: #888; font-weight: 700; text-transform: uppercase; }
+
+        /* --- CONTACT --- */
+        .contact-section { margin-top: 60px; padding: 80px 20px; border-top: 1px solid #333; }
+        .contact-info-block { max-width: 700px; margin: 0 auto; text-align: center; }
+        .contact-hello { font-size: 3rem; font-weight: 900; margin-bottom: 25px; color: #fff; }
+        .contact-hello span { color: var(--fm-green); }
+        .fb-btn { display: inline-flex; align-items: center; justify-content: center; background: #1a1a1a; border: 1px solid #333; border-radius: 50px; padding: 12px 30px; color: var(--fm-green); text-decoration: none; font-weight: 700; font-size: 1.1rem; transition: 0.3s; margin-top: 20px; }
+        .fb-btn:hover { background: #252525; color: #fff; border-color: var(--fm-green); transform: translateY(-3px); }
+
+        /* RESPONSIVE */
+        @media (max-width: 850px) {
+            .story-row { flex-direction: column; text-align: center; }
+            .story-side-img { width: 100%; max-width: 400px; height: auto; aspect-ratio: 1/1; }
+        }
+        @media (max-width: 768px) {
+            .hero-title { font-size: 2.5rem; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .story-content { font-size: 1.15rem; }
+        }
+    </style>
+</head>
+<body>
+    <div th:replace="~{fragments/header :: navbar}"></div>
+    
+    <div class="about-hero">
+        <h1 class="hero-title">Về <span>Chúng Tôi</span></h1>
+    </div>
+
+    <div class="wide-container">
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <i class="fas fa-users stat-icon"></i>
+                <div class="stat-number" th:text="${totalUsers != null ? totalUsers : 0}"></div>
+                <div class="stat-label">Thành viên</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-futbol stat-icon"></i>
+                <div class="stat-number" th:text="${totalMatches != null ? totalMatches : 0}"></div>
+                <div class="stat-label">Trận đấu</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-trophy stat-icon"></i>
+                <div class="stat-number" th:text="${totalTournaments != null ? totalTournaments : 0}"></div>
+                <div class="stat-label">Giải đấu</div>
+            </div>
+        </div>
+
+        <div class="story-section">
+            <div class="story-content">
+                <p>PéSoc được bắt đầu với một ý tưởng bé nhưng mang giấc mộng lớn lao. Đó là tạo ra sân chơi lành mạnh cho các người chơi eFootball, hơn hết là trở thành một đại gia đình cho các Pes thủ, không chỉ là những anh em của 12 Toán 2.</p>
+                
+                <div class="story-row">
+                    <p>Vào năm 2024 ấy, quay lại cái ánh nắng chói chang của mùa hạ rực cháy đam mê chiếu qua mái trường THPT chuyên Nguyễn Huệ xuống căn phòng lớp 12 Toán 2. Khi mà áp lực thi cử còn đang đè nặng trĩu đôi vai những cô cậu học trò trẻ tuổi, nguồn năng lượng từ những trận đấu eFootball lại như những dòng suối mát tưới vào tâm hồn của Hoàng Đức - người sau này trở thành Founder của PéSoc. Với mong ước lập một hội nhóm để lưu giữ những tháng ngày thanh xuân, Đức cùng Nam đã tập hợp nhóm bạn của mình để tạo nên PéSoc của những ngày ban đầu.</p>
+                    
+                    <div class="story-side-img">
+                        <img src="/images/12Toan2Ball.jpg" alt="Kỷ niệm lớp 12 Toán 2">
+                    </div>
+                </div>
+
+                <p>Trải qua thời gian phát triển đến ngày hôm nay, PéSoc đã có thể tự tin khẳng định là một trong những sân chơi ổn định nhất (với việc số lượng tuyển thủ vẫn giữ y nguyên so với khi thành lập), lành mạnh nhất (trừ khi có thằng nào dùng tiền) và quan trọng hơn hết là một đại gia đình gắn kết nhất cộng đồng eFootball. Chỉ muốn nói là... Biết ơn những người đã rời đi. Trân trọng những người còn ở lại. Cảm ơn quá khứ, hiện tại, tương lai. Mong cho phút giây này tồn tại mãi mãi...</p>
+            </div>
+            
+            <img src="/images/12Toan2.jpg" class="story-banner-wide" alt="PéSoc Group Photo">
+        </div>
+
+        <h2 class="section-title">Ban Quản Trị & Đội Ngũ</h2>
+        
+        <div class="team-grid">
+            <div th:if="${user1 != null}" class="team-card">
+                <a th:href="@{'/profile/' + ${user1.username}}" class="team-profile-link">
+                    <div class="team-avatar">
+                        <img th:if="${user1.avatar != null}" th:src="@{'/uploads/avatars/' + ${user1.avatar}}">
+                        <i th:if="${user1.avatar == null}" class="fas fa-user"></i>
+                    </div>
+                    <div class="team-name" th:text="${user1.username}"></div>
+                </a>
+                <div class="team-role">Chủ tịch liên đoàn, Co-Founder</div>
+            </div>
+
+            <div th:if="${user2 != null}" class="team-card">
+                <a th:href="@{'/profile/' + ${user2.username}}" class="team-profile-link">
+                    <div class="team-avatar">
+                        <img th:if="${user2.avatar != null}" th:src="@{'/uploads/avatars/' + ${user2.avatar}}">
+                        <i th:if="${user2.avatar == null}" class="fas fa-user"></i>
+                    </div>
+                    <div class="team-name" th:text="${user2.username}"></div>
+                </a>
+                <div class="team-role">CEO, Founder</div>
+            </div>
+
+            <div th:if="${user3 != null}" class="team-card">
+                <a th:href="@{'/profile/' + ${user3.username}}" class="team-profile-link">
+                    <div class="team-avatar">
+                        <img th:if="${user3.avatar != null}" th:src="@{'/uploads/avatars/' + ${user3.avatar}}">
+                        <i th:if="${user3.avatar == null}" class="fas fa-user"></i>
+                    </div>
+                    <div class="team-name" th:text="${user3.username}"></div>
+                </a>
+                <div class="team-role">Design, Media</div>
+            </div>
+
+            <div th:if="${user4 != null}" class="team-card">
+                <a th:href="@{'/profile/' + ${user4.username}}" class="team-profile-link">
+                    <div class="team-avatar">
+                        <img th:if="${user4.avatar != null}" th:src="@{'/uploads/avatars/' + ${user4.avatar}}">
+                        <i th:if="${user4.avatar == null}" class="fas fa-user"></i>
+                    </div>
+                    <div class="team-name" th:text="${user4.username}"></div>
+                </a>
+                <div class="team-role">Nhân viên văn phòng</div>
+            </div>
+
+            <div th:if="${user5 != null}" class="team-card">
+                <a th:href="@{'/profile/' + ${user5.username}}" class="team-profile-link">
+                    <div class="team-avatar">
+                        <img th:if="${user5.avatar != null}" th:src="@{'/uploads/avatars/' + ${user5.avatar}}">
+                        <i th:if="${user5.avatar == null}" class="fas fa-user"></i>
+                    </div>
+                    <div class="team-name" th:text="${user5.username}"></div>
+                </a>
+                <div class="team-role">Kĩ thuật viên</div>
+            </div>
+
+            <div th:if="${user6 != null}" class="team-card">
+                <a th:href="@{'/profile/' + ${user6.username}}" class="team-profile-link">
+                    <div class="team-avatar">
+                        <img th:if="${user6.avatar != null}" th:src="@{'/uploads/avatars/' + ${user6.avatar}}">
+                        <i th:if="${user6.avatar == null}" class="fas fa-user"></i>
+                    </div>
+                    <div class="team-name" th:text="${user6.username}"></div>
+                </a>
+                <div class="team-role">Kế toán trưởng</div>
+            </div>
+
+            <div th:if="${user7 != null}" class="team-card">
+                <a th:href="@{'/profile/' + ${user7.username}}" class="team-profile-link">
+                    <div class="team-avatar">
+                        <img th:if="${user7.avatar != null}" th:src="@{'/uploads/avatars/' + ${user7.avatar}}">
+                        <i th:if="${user7.avatar == null}" class="fas fa-user"></i>
+                    </div>
+                    <div class="team-name" th:text="${user7.username}"></div>
+                </a>
+                <div class="team-role">Tuyển thủ mới nổi</div>
+            </div>
+
+            <div th:if="${user8 != null}" class="team-card">
+                <a th:href="@{'/profile/' + ${user8.username}}" class="team-profile-link">
+                    <div class="team-avatar">
+                        <img th:if="${user8.avatar != null}" th:src="@{'/uploads/avatars/' + ${user8.avatar}}">
+                        <i th:if="${user8.avatar == null}" class="fas fa-user"></i>
+                    </div>
+                    <div class="team-name" th:text="${user8.username}"></div>
+                </a>
+                <div class="team-role">Cố vấn pháp lý</div>
+            </div>
+
+            <div th:if="${user9 != null}" class="team-card">
+                <a th:href="@{'/profile/' + ${user9.username}}" class="team-profile-link">
+                    <div class="team-avatar">
+                        <img th:if="${user9.avatar != null}" th:src="@{'/uploads/avatars/' + ${user9.avatar}}">
+                        <i th:if="${user9.avatar == null}" class="fas fa-user"></i>
+                    </div>
+                    <div class="team-name" th:text="${user9.username}"></div>
+                </a>
+                <div class="team-role">Trọng Tài</div>
+            </div>
+
+            <div th:if="${user10 != null}" class="team-card">
+                <a th:href="@{'/profile/' + ${user10.username}}" class="team-profile-link">
+                    <div class="team-avatar">
+                        <img th:if="${user10.avatar != null}" th:src="@{'/uploads/avatars/' + ${user10.avatar}}">
+                        <i th:if="${user10.avatar == null}" class="fas fa-user"></i>
+                    </div>
+                    <div class="team-name" th:text="${user10.username}"></div>
+                </a>
+                <div class="team-role">Cổ đông lớn</div>
+            </div>
+
+            <div th:if="${user11 != null}" class="team-card">
+                <a th:href="@{'/profile/' + ${user11.username}}" class="team-profile-link">
+                    <div class="team-avatar">
+                        <img th:if="${user11.avatar != null}" th:src="@{'/uploads/avatars/' + ${user11.avatar}}">
+                        <i th:if="${user11.avatar == null}" class="fas fa-user"></i>
+                    </div>
+                    <div class="team-name" th:text="${user11.username}"></div>
+                </a>
+                <div class="team-role">Bet developer</div>
+            </div>
+
+            <div class="team-card">
+                <a href="#" class="team-profile-link">
+                    <div class="team-avatar">
+                        <img src="/images/Gemini.jpg" alt="Gemini">
+                    </div>
+                    <div class="team-name">Gemini</div>
+                </a>
+                <div class="team-role">Web developer</div>
+            </div>
+
+
+        </div>
+
+        <div class="contact-section">
+            <div class="contact-info-block">
+                <i class="fas fa-building" style="font-size: 3rem; margin-bottom: 20px;"></i>
+                <div class="contact-hello"><span>Contact us,</span> Đã sẵn sàng?</div>
+                <div class="contact-details">
+                    <p>Nền tảng thi đấu và giao lưu Pes, eFootball.</p>
+                    <p>Mọi góp ý, báo lỗi hoặc liên hệ hợp tác giải đấu, vui lòng kết nối với chúng tôi qua cộng đồng Facebook chính thức.</p>
+                    <a href="https://www.facebook.com/groups/pesoc" target="_blank" class="fb-btn">
+                        <i class="fab fa-facebook fs-4 me-2 text-primary"></i> 
+                        Group PéSoc
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <th:block th:replace="~{fragments/header :: scripts}"></th:block>
+</body>
+</html>

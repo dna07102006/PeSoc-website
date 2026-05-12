@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/header :: head}"></th:block>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Roboto', sans-serif !important; background-color: #000000; color: #ffffff; margin: 0; }
+        .wide-container { max-width: 1000px !important; margin: 0 auto; padding: 20px; }
+
+        :root { --fm-green: #11cd76; }
+        .text-fm-green { color: var(--fm-green) !important; }
+        
+        /* --- HEADER CARD --- */
+        .page-header-card { background-color: #1a1a1a; border-radius: 12px; border: 1px solid #2d2d2d; padding: 25px 30px; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between; }
+        .page-title { font-size: 1.6rem; font-weight: 800; margin: 0; color: #fff; text-transform: uppercase; display: flex; align-items: center; gap: 12px; }
+        .page-title i { color: #ffc107; }
+        .page-subtitle { font-size: 0.9rem; color: #aaa; margin-top: 5px; }
+
+        /* --- INFO BOX --- */
+        .info-box { background: #1a1a1a; border-radius: 12px; padding: 15px 0; margin-bottom: 25px; border: 1px solid #2d2d2d; }
+        .info-title { font-size: 1rem; color: #fff; text-transform: uppercase; font-weight: 800; margin-bottom: 10px; padding: 0 25px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #2d2d2d; padding-bottom: 15px; }
+
+        /* --- TOUR ROW --- */
+        .tour-row { display: flex; align-items: center; justify-content: space-between; padding: 18px 25px; border-bottom: 1px solid #2d2d2d; text-decoration: none !important; transition: 0.2s; cursor: pointer; }
+        .tour-row:hover { background: #222; }
+        .tour-row:last-child { border-bottom: none; }
+        
+        .tour-banner-container { width: 55px; height: 55px; border-radius: 10px; border: 1px solid #444; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background-color: #000; }
+        .tour-banner-img { width: 100%; height: 100%; object-fit: contain; padding: 2px; }
+        
+        .tour-name { font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 3px; }
+        .tour-meta { font-size: 0.8rem; color: #aaa; }
+
+        /* --- BADGES --- */
+        .badge-status { font-weight: 700; font-size: 0.85rem; letter-spacing: 0.5px; }
+        .dot-opening { color: var(--fm-green); font-size: 8px; vertical-align: middle; margin-right: 6px; }
+
+        .empty-state { text-align: center; padding: 40px 20px; color: #666; }
+
+        /* --- PHÂN TRANG --- */
+        .pagination-container { display: flex; justify-content: center; margin-top: 20px; margin-bottom: 10px; }
+        .pagination { display: flex; list-style: none; padding: 0; margin: 0; gap: 8px; }
+        .page-item .page-link { background: #1a1a1a; border: 1px solid #333; color: #aaa; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: 0.2s; }
+        .page-item .page-link:hover { background: #333; color: #fff; border-color: #555; }
+        .page-item.active .page-link { background: var(--fm-green); color: #000; border-color: var(--fm-green); }
+        .page-item.disabled .page-link { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
+
+        @media (max-width: 768px) {
+            .tour-row { flex-direction: column; align-items: flex-start; gap: 15px; }
+            .badge-status { align-self: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div th:replace="~{fragments/header :: navbar}"></div>
+    
+    <div class="wide-container">
+        
+        <div class="page-header-card">
+            <div>
+                <h1 class="page-title"><i class="fas fa-trophy"></i> Hệ thống giải đấu</h1>
+                <div class="page-subtitle">
+                    Tổng cộng <span th:text="${#lists.size(openingTournaments) + passedTournaments.totalElements}" class="text-white"></span> giải đấu
+                </div>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <div class="info-title"><i class="fas fa-fire-alt text-fm-green"></i> GIẢI ĐẤU ĐANG DIỄN RA</div>
+            
+            <div th:each="t : ${openingTournaments}" class="tour-row" th:data-url="@{'/tournament-detail/' + ${t.name}}" onclick="window.location.href=this.getAttribute('data-url')">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="tour-banner-container">
+                        <img th:if="${t.banner != null}" th:src="@{'/uploads/tournaments/' + ${t.banner}}" class="tour-banner-img">
+                        <i th:if="${t.banner == null}" class="fas fa-trophy text-secondary" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <div class="d-flex flex-column">
+                        <div class="tour-name" th:text="${t.name}"></div>
+                        <div class="tour-meta">
+                            <i class="fas fa-code-branch me-1"></i><span th:text="${t.tournamentType}"></span> 
+                            <span class="mx-2">•</span> 
+                            Khởi tranh: <span th:text="${#temporals.format(t.openDate, 'dd/MM/yyyy')}"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="badge-status text-white">
+                    <i class="fas fa-circle dot-opening"></i>Đang diễn ra
+                </div>
+            </div>
+
+            <div th:if="${#lists.isEmpty(openingTournaments)}" class="empty-state">
+                <i class="fas fa-bed fs-1 mb-3 text-secondary"></i>
+                <p>Hiện tại không có giải đấu nào đang diễn ra.</p>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <div class="info-title text-secondary"><i class="fas fa-flag-checkered text-danger"></i> GIẢI ĐẤU ĐÃ KẾT THÚC</div>
+            
+            <div th:each="t : ${passedTournaments.content}" class="tour-row" th:data-url="@{'/tournament-detail/' + ${t.name}}" onclick="window.location.href=this.getAttribute('data-url')">
+                <div class="d-flex align-items-center gap-3" style="opacity: 0.7;"> 
+                    <div class="tour-banner-container">
+                        <img th:if="${t.banner != null}" th:src="@{'/uploads/tournaments/' + ${t.banner}}" class="tour-banner-img">
+                        <i th:if="${t.banner == null}" class="fas fa-trophy text-secondary" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <div class="d-flex flex-column">
+                        <div class="tour-name" th:text="${t.name}"></div>
+                        <div class="tour-meta">
+                            <i class="fas fa-code-branch me-1"></i><span th:text="${t.tournamentType}"></span> 
+                            <span th:if="${t.finishDate != null}">
+                                <span class="mx-2">•</span> 
+                                Khép lại: <span th:text="${#temporals.format(t.finishDate, 'dd/MM/yyyy')}"></span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="badge-status text-secondary text-danger">
+                    Đã kết thúc
+                </div>
+            </div>
+
+            <div th:if="${#lists.isEmpty(passedTournaments.content)}" class="empty-state">
+                <p>Chưa có lịch sử giải đấu.</p>
+            </div>
+
+            <div th:if="${passedTournaments.totalPages > 1}" class="pagination-container">
+                <ul class="pagination">
+                    <li class="page-item" th:classappend="${passedTournaments.first} ? 'disabled'">
+                        <a class="page-link" th:href="@{/tournaments(page=${passedTournaments.number - 1})}"><i class="fas fa-chevron-left"></i></a>
+                    </li>
+                    <li class="page-item" th:each="i : ${#numbers.sequence(0, passedTournaments.totalPages - 1)}" 
+                        th:classappend="${passedTournaments.number == i} ? 'active'"
+                        th:if="${i >= passedTournaments.number - 2 and i <= passedTournaments.number + 2}">
+                        <a class="page-link" th:href="@{/tournaments(page=${i})}" th:text="${i + 1}"></a>
+                    </li>
+                    <li class="page-item" th:classappend="${passedTournaments.last} ? 'disabled'">
+                        <a class="page-link" th:href="@{/tournaments(page=${passedTournaments.number + 1})}"><i class="fas fa-chevron-right"></i></a>
+                    </li>
+                </ul>
+            </div>
+
+        </div>
+
+    </div>
+
+    <th:block th:replace="~{fragments/header :: scripts}"></th:block>
+</body>
+</html>

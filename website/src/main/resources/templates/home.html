@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/header :: head}"></th:block>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif !important; background-color: #000000; color: #ffffff; margin: 0; }
+        .wide-container { max-width: 1400px !important; margin: 0 auto; padding: 0 20px; }
+
+        /* --- BANNER --- */
+        .banner-section { padding: 15px 0 10px 0; }
+        .mega-bet-banner {
+            display: block; width: 100%; max-width: 1050px; margin: 0 auto;
+            padding: 18px 25px; background: linear-gradient(90deg, #001a33 0%, #003366 100%);
+            border: 1px solid #0d6efd; border-radius: 12px; text-decoration: none !important;
+        }
+        /* --- CARD STYLE --- */
+        .fotmob-card { background-color: #1a1a1a; border-radius: 12px; border: 1px solid #2d2d2d; margin-bottom: 15px; overflow: hidden; display: flex; flex-direction: column; }
+        .header-link {
+            display: flex; align-items: center; width: 100%; padding: 0 15px; min-height: 44px; font-weight: 700; font-size: 0.9rem;
+            border-bottom: 1px solid #2d2d2d; text-decoration: none !important; color: #ffffff !important;
+            background-color: rgba(255, 255, 255, 0.05); transition: 0.2s;
+        }
+        .header-link:hover { background-color: rgba(255, 255, 255, 0.1); }
+        /* --- HOVER EFFECT --- */
+        .match-item, .table-elo tr, .news-item { transition: background-color 0.2s ease; cursor: pointer; }
+        .match-item:hover, .table-elo tr:hover, .news-item:hover { background-color: #222222 !important; }
+        /* --- AVATAR DEFAULT --- */
+        .avatar-container { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #444; overflow: hidden; flex-shrink: 0; display: flex; align-items: center;
+            justify-content: center; background-color: #000; }
+        .avatar-img { width: 100%; height: 100%; object-fit: cover; }
+        .avatar-icon { font-size: 0.75rem; color: #666; }
+        /* --- TOP ELO --- */
+        .table-elo { width: 100%; border-collapse: collapse; }
+        .table-elo tr { border-bottom: 1px solid #2d2d2d; height: 48px; }
+        .rank-number { text-align: center; font-weight: 700; color: #888; width: 35px; }
+        .rank-1 { color: #ffc107 !important; text-shadow: 0 0 5px rgba(255, 193, 7, 0.4); }
+
+        .player-name { color: #fff !important; font-size: 0.85rem; font-weight: 500; text-decoration: none !important; width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            display: inline-block; transition: color 0.2s ease; }
+        .player-name:hover { color: #ffc107 !important; }
+        /* --- MATCH ITEMS --- */
+        .match-item { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #2d2d2d; padding: 12px 15px; text-decoration: none !important; }
+        .match-date-col { width: 60px; color: #666; font-size: 0.7rem; flex-shrink: 0; }
+        .match-main-col { flex-grow: 1; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        
+        /* Đã cập nhật CSS flex-column cho Penalty */
+        /* 1. Sửa lại score-box: Bỏ flex-direction: column và thêm position: relative */
+        .score-box { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            min-width: 110px; 
+            font-weight: 700; 
+            font-size: 0.9rem; 
+            color: #fff; 
+            position: relative; 
+        }
+
+        /* 2. Thêm class mới này chuyên dành cho chữ Penalty */
+        .pen-text { 
+            position: absolute; 
+            top: 100%; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            font-size: 0.65rem; 
+            color: #ffc107; /* Màu vàng */
+            white-space: nowrap; 
+            margin-top: 4px; 
+            font-weight: 500;
+        }
+
+        /* 3. Nới rộng khoảng cách bên dưới của hàng để chữ Pen không bị dính vào viền */
+        .match-item { 
+            display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #2d2d2d; 
+            padding: 12px 15px 18px 15px; /* Tăng padding bottom lên 18px */
+            text-decoration: none !important; 
+        }
+
+        .match-row { 
+            display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #2d2d2d; 
+            padding: 12px 15px 18px 15px; /* Tăng padding bottom lên 18px */
+            text-decoration: none !important; transition: 0.2s; cursor: pointer; 
+        }
+        .score-main-row { display: flex; align-items: center; gap: 10px; }
+        
+        .match-tour-col { width: 85px; color: #666; font-size: 0.65rem; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* --- NEWS STYLE --- */
+        .news-top-card { display: block; padding: 15px; border-bottom: 1px solid #2d2d2d; text-decoration: none !important; }
+        .news-top-img { width: 100%; height: 170px; object-fit: cover; border-radius: 12px; margin-bottom: 10px; border: 1px solid #333; }
+        .news-top-title { color: #fff; font-size: 1rem; font-weight: 700; line-height: 1.4; margin-bottom: 5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+
+        .news-list-item { display: flex; gap: 12px; padding: 12px 15px; border-bottom: 1px solid #2d2d2d; text-decoration: none !important; }
+        .news-list-img { width: 85px; height: 65px; object-fit: cover; border-radius: 8px; border: 1px solid #333; flex-shrink: 0; }
+        .news-list-content { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+        .news-list-title { color: #ddd; font-size: 0.85rem; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .news-meta { color: #666; font-size: 0.65rem; }
+        .btn-view-all { color: #aaa; font-size: 0.8rem; text-align: center; padding: 12px; text-decoration: none !important; transition: 0.2s; border-top: 1px solid #2d2d2d;
+            font-weight: 500; display: block; }
+        .btn-view-all:hover { color: #fff; background-color: #222; }
+        .empty-state { color: #888 !important; font-style: italic; padding: 30px 15px; text-align: center; font-size: 0.85rem; display: block; width: 100%; }
+        /* --- TOURNAMENT BANNER STYLE --- */
+        .tour-banner-container {
+            width: 38px; 
+            height: 38px; 
+            border-radius: 8px; /* Bo tròn góc hình vuông */
+            border: 1px solid #444; 
+            overflow: hidden; 
+            flex-shrink: 0; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            background-color: #000;
+        }
+        .tour-banner-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Căn chỉnh contain như bạn yêu cầu */
+        }
+    </style>
+</head>
+<body>
+    <div th:replace="~{fragments/header :: navbar}"></div>
+    <div class="banner-section">
+        <div class="container text-center">
+            <a href="https://www.google.com/search?q=bet" target="_blank" class="mega-bet-banner shadow-sm">
+                <div class="row align-items-center text-start">
+                    <div class="col-8">
+                        <span class="d-block fw-bold fs-5 text-white">BETSOC88 - ĐỐI TÁC CHÍNH THỨC CỦA PESOC</span>
+                        <span class="text-warning small fw-bold">THƯỞNG 100% - NẠP RÚT SIÊU TỐC</span>
+                    </div>
+                    <div class="col-4 text-end">
+                        <div class="btn btn-warning btn-sm fw-bold rounded-pill px-4">ĐẶT CƯỢC</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+    <div class="wide-container mt-2">
+        <div class="row g-3">
+
+            <div class="col-lg-3">
+                <div class="fotmob-card mb-3">
+                    <a th:href="@{/elo-board}" class="header-link" style="color: #ffc107 !important; border-left: 4px solid #ffc107;">
+                        <i class="fas fa-fire text-warning me-2"></i> Top Elo
+                    </a>
+                    <table class="table-elo">
+                        <tbody>
+                            <tr th:each="p, stat : ${top5Players}"
+                                th:data-url="@{'/profile/' + ${p.username}}"
+                                onclick="window.location.href=this.getAttribute('data-url')">
+                                <td class="rank-number" th:classappend="${stat.count == 1} ? 'rank-1' : ''" th:text="${stat.count}"></td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-container me-3">
+                                            <img th:if="${p.avatar != null}" th:src="@{'/uploads/avatars/' + ${p.avatar}}" class="avatar-img">
+                                            <i th:if="${p.avatar == null}" class="fas fa-user avatar-icon"></i>
+                                        </div>
+                                        <span class="player-name" th:text="${p.username}"></span>
+                                    </div>
+                                </td>
+                                <td class="text-end text-warning fw-bold pe-3" th:text="${p.elo}"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="fotmob-card">
+                    <a th:href="@{/tournaments}" class="header-link" style="color: #0d6efd !important; border-left: 4px solid #0d6efd;">
+                        <i class="fas fa-trophy text-primary me-2"></i> Giải đấu nổi bật
+                    </a>
+                    <div th:each="t : ${ongoingTournaments}" class="match-item"
+                        th:data-url="@{'/tournament-detail/' + ${t.name}}"
+                        onclick="window.location.href=this.getAttribute('data-url')"> 
+                        
+                        <div class="w-100 d-flex align-items-center">
+                            <div class="tour-banner-container me-3">
+                                <img th:if="${t.banner != null}" th:src="@{'/uploads/tournaments/' + ${t.banner}}" class="tour-banner-img">
+                                <i th:if="${t.banner == null}" class="fas fa-trophy text-secondary" style="font-size: 1.1rem;"></i>
+                            </div>
+
+                            <div class="text-truncate flex-grow-1">
+                                <span class="player-name fw-bold" style="width: auto;" th:text="${t.name}"></span> 
+                                <div class="news-meta mt-1">
+                                    <i class="fas fa-circle" th:style="${t.opening} ? 'color: #4CAF50; font-size: 6px;' : 'color: #777; font-size: 6px;'"></i>
+                                    <span th:text="${t.opening ? ' Đang diễn ra' : ' Đã kết thúc'}"></span> 
+                                </div>
+                            </div>
+                            
+                            <i class="fas fa-chevron-right text-muted small ms-2"></i> 
+                        </div>
+                    </div>
+                    <div th:if="${#lists.isEmpty(ongoingTournaments)}" class="empty-state">Không có giải đấu nổi bật.</div> 
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="fotmob-card mb-3">
+                    <a th:href="@{/upcoming-matches}" class="header-link" style="color: #00bcd4 !important; border-left: 4px solid #00bcd4;">
+                        <i class="fas fa-clock me-2"></i> Sắp diễn ra
+                    </a>
+                    <div th:each="m : ${upcomingMatches}" class="match-item"
+                        th:data-url="@{'/match-detail/' + ${m.id}}"
+                        onclick="window.location.href=this.getAttribute('data-url')">
+                        <div class="match-date-col" th:text="${#temporals.format(m.date, 'dd/MM')}"></div>
+                        <div class="match-main-col">
+                            <a th:href="@{'/profile/' + ${m.player1.username}}" class="player-name text-end" th:text="${m.player1.username}" onclick="event.stopPropagation()"></a>
+                            <div class="score-box">
+                                <div class="score-main-row">
+                                    <div class="avatar-container"><img th:if="${m.player1.avatar != null}" th:src="@{'/uploads/avatars/' + ${m.player1.avatar}}" class="avatar-img"><i th:if="${m.player1.avatar == null}" class="fas fa-user avatar-icon"></i></div>
+                                    <span class="text-info" style="font-size: 0.7rem;">VS</span>
+                                    <div class="avatar-container"><img th:if="${m.player2.avatar != null}" th:src="@{'/uploads/avatars/' + ${m.player2.avatar}}" class="avatar-img"><i th:if="${m.player2.avatar == null}" class="fas fa-user avatar-icon"></i></div>
+                                </div>
+                            </div>
+                            <a th:href="@{'/profile/' + ${m.player2.username}}" class="player-name" th:text="${m.player2.username}" onclick="event.stopPropagation()"></a>
+                        </div>
+                        <div class="match-tour-col" th:text="${m.tournament != null ? m.tournament.name : 'Giao hữu'}"></div>
+                    </div>
+                    <div th:if="${#lists.isEmpty(upcomingMatches)}" class="empty-state">Chưa có lịch thi đấu mới.</div>
+                </div>
+
+                <div class="fotmob-card">
+                    <a th:href="@{/passed-matches}" class="header-link" style="color: #4CAF50 !important; border-left: 4px solid #4CAF50;">
+                        <i class="fas fa-check-circle me-2"></i> Đã kết thúc
+                    </a>
+                    <div th:each="m : ${passedMatches}" class="match-item"
+                        th:data-url="@{'/match-detail/' + ${m.id}}"
+                        onclick="window.location.href=this.getAttribute('data-url')">
+                        <div class="match-date-col" th:text="${#temporals.format(m.date, 'dd/MM')}"></div>
+                        <div class="match-main-col">
+                            <a th:href="@{'/profile/' + ${m.player1.username}}" class="player-name text-end" th:text="${m.player1.username}" onclick="event.stopPropagation()"></a>
+                            
+                            <div class="score-box">
+                                <div class="score-main-row">
+                                    <div class="avatar-container"><img th:if="${m.player1.avatar != null}" th:src="@{'/uploads/avatars/' + ${m.player1.avatar}}" class="avatar-img"><i th:if="${m.player1.avatar == null}" class="fas fa-user avatar-icon"></i></div>
+                                    <span th:text="${m.player1Score + ' - ' + m.player2Score}"></span>
+                                    <div class="avatar-container"><img th:if="${m.player2.avatar != null}" th:src="@{'/uploads/avatars/' + ${m.player2.avatar}}" class="avatar-img"><i th:if="${m.player2.avatar == null}" class="fas fa-user avatar-icon"></i></div>
+                                </div>
+                                <div th:if="${m.player1Pen != null}" class="pen-text">
+                                    Pen: [[${m.player1Pen}]] - [[${m.player2Pen}]]
+                                </div>
+                            </div>
+
+                            <a th:href="@{'/profile/' + ${m.player2.username}}" class="player-name" th:text="${m.player2.username}" onclick="event.stopPropagation()"></a>
+                        </div>
+                        <div class="match-tour-col" th:text="${m.tournament != null ? m.tournament.name : 'Giao hữu'}"></div>
+                    </div>
+                    <div th:if="${#lists.isEmpty(passedMatches)}" class="empty-state">Chưa có kết quả mới.</div>
+                </div>
+            </div>
+
+            <div class="col-lg-3">
+                <div class="fotmob-card">
+                    <a th:href="@{/news}" class="header-link" style="color: #ff9800 !important; border-left: 4px solid #ff9800;">
+                        <i class="fas fa-newspaper me-2"></i> Tin tức
+                    </a>
+                    <th:block th:each="article, stat : ${latestNews}">
+                        <a th:if="${stat.index == 0}" th:href="@{'/news/' + ${article.id}}" class="news-top-card news-item">
+                            <img th:src="${article.thumbnail != null ? '/uploads/news/' + article.thumbnail : '/images/news/default.jpg'}" class="news-top-img">
+                            <div class="news-top-title" th:text="${article.title}"></div>
+                            <div class="news-meta">
+                                <span th:text="${article.author.username}"></span> • <span th:text="${#temporals.format(article.createdAt, 'dd/MM HH:mm')}"></span>
+                            </div>
+                        </a>
+                        <a th:if="${stat.index > 0}" th:href="@{'/news/' + ${article.id}}" class="news-list-item news-item">
+                            <img th:src="${article.thumbnail != null ? '/uploads/news/' + article.thumbnail : '/images/news/default.jpg'}" class="news-list-img">
+                            <div class="news-list-content">
+                                <div class="news-list-title" th:text="${article.title}"></div>
+                                <div class="news-meta" th:text="${#temporals.format(article.createdAt, 'dd/MM HH:mm')}"></div>
+                            </div>
+                        </a>
+                    </th:block>
+                    <div th:if="${#lists.isEmpty(latestNews)}" class="empty-state">Chưa có tin tức nào.</div>
+                    <a th:href="@{/news}" class="btn-view-all">Xem tất cả <i class="fas fa-chevron-right ms-1" style="font-size: 0.7rem;"></i></a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <th:block th:replace="~{fragments/header :: scripts}"></th:block>
+</body>
+</html>
