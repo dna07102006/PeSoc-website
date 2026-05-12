@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/header :: head}"></th:block>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { background-color: #ffffff !important; color: #111111 !important; font-family: 'Roboto', sans-serif; }
+        
+        :root { --fm-green: #0ea860; }
+
+        /* Khối ở trên (Ảnh + Tiêu đề) bung rộng */
+        .wide-hero-container { max-width: 1050px; margin: 0 auto; padding: 40px 20px 0 20px; }
+        
+        /* BỐ CỤC 2 CỘT MỚI */
+        .content-layout { max-width: 1050px; margin: 0 auto; padding: 0 20px 40px 20px; display: flex; gap: 40px; align-items: flex-start; }
+        .main-col { flex: 1; min-width: 0; } /* Cột nội dung bên trái */
+        .sidebar-col { width: 320px; flex-shrink: 0; position: sticky; top: 20px; } /* Cột Sidebar bên phải (Cuộn theo màn hình) */
+
+        /* Các style cũ của bài viết */
+        .article-tools { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; font-size: 0.9rem; }
+        .btn-back { color: #555; text-decoration: none; font-weight: 600; transition: 0.2s; }
+        .btn-back:hover { color: #000; }
+        .btn-delete { color: #d32f2f; background: rgba(211, 47, 47, 0.1); border: none; padding: 6px 15px; border-radius: 4px; font-weight: 600; transition: 0.2s; }
+        .btn-delete:hover { background: #d32f2f; color: #fff; }
+
+        .article-title { font-family: 'Lora', serif; font-size: 2.8rem; font-weight: 700; color: #111; line-height: 1.25; margin-bottom: 15px; }
+        .article-tags { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+        .tag-link { color: #c00; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; text-decoration: none; letter-spacing: 0.5px; }
+        .tag-link:hover { text-decoration: underline; }
+
+        .article-summary { font-family: 'Lora', serif; font-size: 1.15rem; color: #444; line-height: 1.6; margin-bottom: 25px; font-weight: 500; }
+        .article-author-box { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; }
+        .author-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; }
+        .author-info { display: flex; flex-direction: column; justify-content: center; }
+        .author-name { color: #666; font-size: 0.95rem; }
+        .author-name a { color: #111; font-weight: 700; text-decoration: none; margin-left: 3px; transition: 0.2s; }
+        .author-name a:hover { color: var(--fm-green); }
+        .author-time { color: #888; font-size: 0.85rem; margin-top: 2px; }
+
+        .article-thumb { width: 100%; max-height: 550px; object-fit: cover; border-radius: 6px; margin-bottom: 40px; }
+
+        .article-body { font-family: 'Lora', serif; font-size: 1rem; color: #222; line-height: 1.8; }
+        .article-body p { margin-bottom: 20px; }
+        .article-body img { max-width: 100%; height: auto; display: block; margin: 20px auto; border-radius: 4px; }
+        .article-divider { border: 0; height: 1px; background: #e5e5e5; margin: 40px 0; }
+
+        /* --- SIDEBAR (KIỂU VNEXPRESS) --- */
+        .sidebar-title { font-size: 1.3rem; font-family: 'Lora', serif; font-weight: 700; color: #111; border-bottom: 1px solid #ddd; margin-bottom: 15px; }
+        .sidebar-title span { display: inline-block; border-bottom: 2px solid #9f224e; padding-bottom: 8px; margin-bottom: -1px; } /* Viền đỏ booc-đô giống VNExpress */
+        
+        .sidebar-item { display: flex; gap: 15px; padding: 15px 0; border-bottom: 1px solid #eee; text-decoration: none; transition: 0.2s; }
+        .sidebar-item:last-child { border-bottom: none; }
+        .sidebar-item:hover .si-title { color: var(--fm-green); }
+        
+        .si-thumb { width: 120px; height: 75px; flex-shrink: 0; background: #eee; border-radius: 2px; overflow: hidden; }
+        .si-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .si-info { flex-grow: 1; display: flex; flex-direction: column; }
+        .si-title { font-family: 'Lora', serif; font-size: 1rem; font-weight: 600; color: #222; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 8px; transition: 0.2s; }
+        .si-meta { font-family: 'Roboto', sans-serif; font-size: 0.8rem; color: #999; font-weight: 500; display: flex; align-items: center; gap: 5px; margin-top: auto; }
+
+        /* --- BÌNH LUẬN --- */
+        .comment-section { font-family: 'Roboto', sans-serif; }
+        .cs-header { font-size: 1.2rem; font-weight: 700; color: #111; border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 25px; display: inline-block; }
+
+        .comment-form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 40px; }
+        .comment-form textarea { width: 100%; border: 1px solid #ccc; border-radius: 4px; padding: 15px; font-size: 0.95rem; resize: vertical; min-height: 80px; background: #fafafa; color: #111; }
+        .comment-form textarea:focus { border-color: #888; outline: none; background: #fff; }
+        .cf-actions { display: flex; justify-content: flex-end; }
+        .btn-submit-cmt { background: #111; color: #fff; border: none; font-weight: 600; padding: 8px 25px; border-radius: 4px; font-size: 0.9rem; cursor: pointer; transition: 0.2s; }
+        .btn-submit-cmt:hover { background: var(--fm-green); }
+
+        .comment-list { display: flex; flex-direction: column; }
+        .comment-item { display: flex; gap: 15px; padding: 15px 0; border-bottom: 1px solid #eee; }
+        .ci-avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; overflow: hidden; background: #eee; display: flex; align-items: center; justify-content: center; }
+        .ci-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .ci-main { flex-grow: 1; }
+        .ci-text { font-size: 0.95rem; color: #333; line-height: 1.5; margin-bottom: 8px; }
+        .ci-author { font-weight: 700; color: #111; text-decoration: none; margin-right: 5px; }
+        .ci-author:hover { color: var(--fm-green); }
+        .ci-tag { color: var(--fm-green); font-weight: 600; margin-right: 2px; }
+        
+        .ci-actions { display: flex; align-items: center; gap: 15px; font-size: 0.8rem; color: #888; font-weight: 500; flex-wrap: wrap; }
+        .ci-btn { background: none; border: none; padding: 0; color: #888; font-weight: 500; text-decoration: none; display: flex; align-items: center; gap: 5px; transition: 0.2s; cursor: pointer; }
+        .ci-btn:hover { color: #111; }
+        .ci-time { margin-left: auto; color: #aaa; }
+
+        .like-display { position: relative; display: inline-flex; align-items: center; gap: 5px; color: #444; font-weight: 600; cursor: pointer; background: #f5f5f5; padding: 3px 8px; border-radius: 12px; }
+        .like-display i { color: #e91e63; } 
+        .tooltip-content { visibility: hidden; opacity: 0; position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 0.75rem; white-space: nowrap; transition: 0.2s; z-index: 10; font-weight: 400; pointer-events: none; }
+        .tooltip-content::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: rgba(0,0,0,0.85) transparent transparent transparent; }
+        .like-display:hover .tooltip-content { visibility: visible; opacity: 1; }
+
+        .replies-container { margin-left: 50px; border-left: 2px solid #f0f0f0; padding-left: 15px; margin-top: 10px; }
+        .reply-item { border-bottom: none; padding: 10px 0; }
+        .reply-item .ci-avatar { width: 28px; height: 28px; }
+        .reply-item .ci-text { font-size: 0.9rem; }
+        
+        .reply-form-wrapper { display: none; margin-left: 50px; margin-top: 10px; margin-bottom: 10px; }
+        .reply-form-wrapper .comment-form { margin-bottom: 0; }
+        .reply-form-wrapper textarea { min-height: 50px; padding: 10px; font-size: 0.9rem; }
+
+        /* RESPONSIVE: Trên điện thoại cột phải sẽ tụt xuống dưới */
+        @media (max-width: 850px) {
+            .article-title { font-size: 2.2rem; }
+            .content-layout { flex-direction: column; }
+            .sidebar-col { width: 100%; margin-top: 20px; }
+            .replies-container { margin-left: 20px; }
+            .reply-form-wrapper { margin-left: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div th:replace="~{fragments/header :: navbar}"></div>
+    
+    <div class="wide-hero-container">
+        <div class="article-tools">
+            <a th:href="@{/news}" class="btn-back"><i class="fas fa-arrow-left me-1"></i> Trở về trang tin</a>
+            <form th:if="${session.logInUser != null and (session.logInUser.role == 'ADMIN' or session.logInUser.id == article.author.id)}" 
+                  th:action="@{|/admin/news/${article.id}/delete|}" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn xóa bài viết này?');">
+                <button type="submit" class="btn-delete"><i class="fas fa-trash-alt me-1"></i> Xóa bài</button>
+            </form>
+        </div>
+
+        <h1 class="article-title" th:text="${article.title}"></h1>
+        
+        <div class="article-tags" th:if="${not #lists.isEmpty(article.tags)}">
+            <a th:each="tag : ${article.tags}" th:href="@{'/news/tag/' + ${tag.name}}" class="tag-link" th:text="${'#' + tag.name}"></a>
+        </div>
+
+        <div class="article-summary" th:text="${article.summary}"></div>
+
+        <div class="article-author-box">
+            <img th:if="${article.author.avatar != null}" th:src="@{'/uploads/avatars/' + ${article.author.avatar}}" class="author-avatar">
+            <div th:if="${article.author.avatar == null}" class="author-avatar d-flex align-items-center justify-content-center bg-light text-secondary fs-4"><i class="fas fa-user"></i></div>
+            <div class="author-info">
+                <div class="author-name">Bởi <a th:href="@{'/profile/' + ${article.author.username}}" th:text="${article.author.username}"></a></div>
+                <div class="author-time" th:text="${article.createdAt != null ? #temporals.format(article.createdAt, 'HH:mm - dd/MM/yyyy') : 'Vừa xong'}"></div>
+            </div>
+        </div>
+
+        <img th:if="${article.thumbnail != null}" th:src="@{'/uploads/news/' + ${article.thumbnail}}" class="article-thumb">
+        <img th:if="${article.thumbnail == null}" src="/images/news/default.jpg" class="article-thumb">
+    </div>
+
+    <div class="content-layout">
+        
+        <div class="main-col">
+            <div class="article-body" style="white-space: pre-wrap;" th:utext="${article.content}"></div>
+
+            <hr class="article-divider">
+
+            <div class="comment-section">
+                <div class="cs-header">Comments (<span th:text="${#lists.size(article.comments)}"></span>)</div>
+                
+                <form th:if="${session.logInUser != null}" th:action="@{|/news/${article.id}/comment|}" method="post" class="comment-form">
+                    <textarea name="content" placeholder="Chia sẻ ý kiến của bạn bài viết này..." required></textarea>
+                    <div class="cf-actions">
+                        <button type="submit" class="btn-submit-cmt">Gửi bình luận</button>
+                    </div>
+                </form>
+                
+                <div th:if="${session.logInUser == null}" class="alert alert-light border text-center mb-4 text-dark rounded-0">
+                    Vui lòng <a href="#" data-bs-toggle="modal" data-bs-target="#loginModal" class="text-danger fw-bold text-decoration-none">đăng nhập</a> để tham gia bình luận.
+                </div>
+
+                <div class="comment-list">
+                    <th:block th:each="c : ${article.comments}" th:if="${c.parentComment == null}">
+                        
+                        <div class="comment-item">
+                            <div class="ci-avatar">
+                                <img th:if="${c.user.avatar != null}" th:src="@{'/uploads/avatars/' + ${c.user.avatar}}">
+                                <i th:if="${c.user.avatar == null}" class="fas fa-user text-secondary"></i>
+                            </div>
+                            <div class="ci-main">
+                                <div class="ci-text">
+                                    <a th:href="@{'/profile/' + ${c.user.username}}" class="ci-author" th:text="${c.user.username}"></a>
+                                    <span th:text="${c.content}"></span>
+                                </div>
+                                
+                                <div class="ci-actions">
+                                    <button type="button" class="ci-btn" th:onclick="'toggleLike(' + ${c.id} + ')'">
+                                        <i th:id="'like-icon-' + ${c.id}" class="far fa-thumbs-up" th:classappend="${session.logInUser != null and #lists.contains(c.likedUsers, session.logInUser)} ? 'fas text-danger' : ''"></i> Thích
+                                    </button>
+                                    
+                                    <div class="like-display" th:id="'like-display-box-' + ${c.id}" th:style="${c.likedUsers != null and #lists.size(c.likedUsers) > 0} ? '' : 'display:none;'">
+                                        <i class="fas fa-thumbs-up"></i> <span th:id="'like-count-' + ${c.id}" th:text="${c.likedUsers != null ? #lists.size(c.likedUsers) : 0}">0</span>
+                                        <div class="tooltip-content"><span th:each="u, iter : ${c.likedUsers}" th:text="${u.username + (iter.last ? '' : ', ')}"></span></div>
+                                    </div>
+                                    
+                                    <button type="button" class="ci-btn ms-3" th:data-target="${c.id}" onclick="toggleReplyForm(this.getAttribute('data-target'))">Trả lời</button>
+                                    
+                                    <span class="ci-time" th:text="${c.createdAt != null ? #temporals.format(c.createdAt, 'dd/MM/yyyy HH:mm') : 'Vừa xong'}"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div th:id="'reply-form-' + ${c.id}" class="reply-form-wrapper">
+                            <form th:if="${session.logInUser != null}" th:action="@{|/news/${article.id}/comment|}" method="post" class="comment-form">
+                                <input type="hidden" name="parentId" th:value="${c.id}">
+                                <textarea name="content" placeholder="Viết phản hồi..." required></textarea>
+                                <div class="cf-actions mt-2">
+                                    <button type="button" class="btn btn-sm btn-light me-2" th:data-target="${c.id}" onclick="toggleReplyForm(this.getAttribute('data-target'))">Hủy</button>
+                                    <button type="submit" class="btn-submit-cmt py-1 px-3">Phản hồi</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="replies-container" th:if="${not #lists.isEmpty(c.replies)}">
+                            <div th:each="reply : ${c.replies}" class="comment-item reply-item">
+                                <div class="ci-avatar">
+                                    <img th:if="${reply.user.avatar != null}" th:src="@{'/uploads/avatars/' + ${reply.user.avatar}}">
+                                    <i th:if="${reply.user.avatar == null}" class="fas fa-user text-secondary" style="font-size: 0.8rem;"></i>
+                                </div>
+                                <div class="ci-main">
+                                    <div class="ci-text">
+                                        <a th:href="@{'/profile/' + ${reply.user.username}}" class="ci-author" th:text="${reply.user.username}"></a>
+                                        
+                                        <th:block th:if="${#strings.startsWith(reply.content, '@') and #strings.contains(reply.content, ' ')}">
+                                            <span class="ci-tag" th:text="${#strings.substringBefore(reply.content, ' ')}"></span>
+                                            <span th:text="${' ' + #strings.substringAfter(reply.content, ' ')}"></span>
+                                        </th:block>
+                                        
+                                        <th:block th:if="${#strings.startsWith(reply.content, '@') and !#strings.contains(reply.content, ' ')}">
+                                            <span class="ci-tag" th:text="${reply.content}"></span>
+                                        </th:block>
+                                        
+                                        <th:block th:if="${!#strings.startsWith(reply.content, '@')}">
+                                            <span th:text="${reply.content}"></span>
+                                        </th:block>
+                                    </div>
+                                    
+                                    <div class="ci-actions">
+                                        <button type="button" class="ci-btn" th:onclick="'toggleLike(' + ${reply.id} + ')'">
+                                            <i th:id="'like-icon-' + ${reply.id}" class="far fa-thumbs-up" th:classappend="${session.logInUser != null and #lists.contains(reply.likedUsers, session.logInUser)} ? 'fas text-danger' : ''"></i> Thích
+                                        </button>
+                                        
+                                        <div class="like-display" th:id="'like-display-box-' + ${reply.id}" th:style="${reply.likedUsers != null and #lists.size(reply.likedUsers) > 0} ? '' : 'display:none;'">
+                                            <i class="fas fa-thumbs-up"></i> <span th:id="'like-count-' + ${reply.id}" th:text="${reply.likedUsers != null ? #lists.size(reply.likedUsers) : 0}">0</span>
+                                            <div class="tooltip-content"><span th:each="u, iter : ${reply.likedUsers}" th:text="${u.username + (iter.last ? '' : ', ')}"></span></div>
+                                        </div>
+                                        
+                                        <button type="button" class="ci-btn ms-3" th:data-root="${c.id}" th:data-user="${reply.user.username}" onclick="replyToSub(this.getAttribute('data-root'), this.getAttribute('data-user'))">Trả lời</button>
+                                        
+                                        <span class="ci-time" th:text="${reply.createdAt != null ? #temporals.format(reply.createdAt, 'dd/MM/yyyy HH:mm') : 'Vừa xong'}"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </th:block>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-col">
+            <div class="sidebar-title">
+                <span>Tin mới nhất</span>
+            </div>
+            
+            <a th:each="la : ${latestArticles}" th:href="@{'/news/' + ${la.id}}" class="sidebar-item">
+                <div class="si-thumb">
+                    <img th:src="${la.thumbnail != null ? '/uploads/news/' + la.thumbnail : '/images/news/default.jpg'}">
+                </div>
+                <div class="si-info">
+                    <div class="si-title" th:text="${la.title}"></div>
+                    <div class="si-meta">
+                        <i class="fas fa-comment text-secondary"></i> <span th:text="${#lists.size(la.comments)}"></span>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+    </div>
+
+    <th:block th:replace="~{fragments/header :: scripts}"></th:block>
+    
+    <script>
+        function toggleReplyForm(commentId) {
+            var formWrapper = document.getElementById('reply-form-' + commentId);
+            if (formWrapper) {
+                if (formWrapper.style.display === 'none' || formWrapper.style.display === '') {
+                    formWrapper.style.display = 'block';
+                    formWrapper.querySelector('textarea').focus();
+                } else {
+                    formWrapper.style.display = 'none';
+                }
+            }
+        }
+
+        function replyToSub(rootCommentId, targetUsername) {
+            var formWrapper = document.getElementById('reply-form-' + rootCommentId);
+            if (formWrapper) {
+                formWrapper.style.display = 'block';
+                var textarea = formWrapper.querySelector('textarea');
+                textarea.value = '@' + targetUsername + ' ';
+                textarea.focus();
+            }
+        }
+
+        // HÀM XỬ LÝ LIKE KHÔNG CẦN TẢI LẠI TRANG
+        function toggleLike(commentId) {
+            fetch(`/news/comment/${commentId}/like`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                // Xử lý nếu chưa đăng nhập: Gọi Modal Login lên
+                if (data.success === false && data.message === "not_logged_in") {
+                    var loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                    loginModal.show();
+                    return;
+                }
+
+                if (data.success) {
+                    // 1. Đổi màu Icon Thích
+                    const icon = document.getElementById('like-icon-' + commentId);
+                    if (data.isLiked) {
+                        icon.classList.remove('far'); // Xóa viền
+                        icon.classList.add('fas', 'text-danger'); // Tô đỏ
+                    } else {
+                        icon.classList.remove('fas', 'text-danger'); // Xóa đỏ
+                        icon.classList.add('far'); // Trả lại viền
+                    }
+
+                    // 2. Cập nhật con số và ẩn/hiện cục hiển thị số Like
+                    const likeBox = document.getElementById('like-display-box-' + commentId);
+                    const countSpan = document.getElementById('like-count-' + commentId);
+                    
+                    countSpan.innerText = data.newLikeCount;
+                    
+                    if (data.newLikeCount > 0) {
+                        likeBox.style.display = 'inline-flex'; // Hiện lên nếu có >= 1 like
+                    } else {
+                        likeBox.style.display = 'none'; // Tắt đi nếu 0 like
+                    }
+                }
+            })
+            .catch(err => console.error("Lỗi Like:", err));
+        }
+    </script>
+</body>
+</html>

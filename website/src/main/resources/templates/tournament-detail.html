@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/header :: head}"></th:block>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Roboto', sans-serif !important; background-color: #000000; color: #ffffff; margin: 0; }
+        .wide-container { max-width: 1100px !important; margin: 0 auto; padding: 20px; }
+
+        :root { --fm-green: #11cd76; }
+        .text-fm-green { color: var(--fm-green) !important; }
+        .bg-fm-green { background-color: var(--fm-green) !important; color: #000 !important; }
+
+        /* --- THÔNG BÁO --- */
+        .alert-custom { border-radius: 8px; border: none; font-weight: 500; }
+
+        /* --- ADMIN PANEL ĐỒNG BỘ MÀU --- */
+        .admin-panel { background: #151515; border: 1px solid #333; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .admin-panel-title { color: #fff; font-weight: 800; text-transform: uppercase; font-size: 0.9rem; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .admin-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+        
+        .btn-admin-uniform { background: #222; color: #ccc; border: 1px solid #444; border-radius: 8px; padding: 10px 15px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; transition: 0.2s; }
+        .btn-admin-uniform:hover { background: #333; color: #fff; border-color: #666; transform: translateY(-2px); }
+        
+        .btn-admin-danger { background: rgba(220, 53, 69, 0.1); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.3); border-radius: 8px; padding: 10px 15px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; transition: 0.2s; }
+        .btn-admin-danger:hover { background: #dc3545; color: #fff; transform: translateY(-2px); }
+
+        /* --- HEADER CARD --- */
+        .td-header-card { background-color: #1a1a1a; border-radius: 12px; border: 1px solid #2d2d2d; overflow: hidden; margin-bottom: 20px; }
+        .td-banner { padding: 30px 30px 15px 30px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+        
+        .td-avatar-wrapper { width: 80px; height: 80px; flex-shrink: 0; border-radius: 12px; border: 1px solid #444; background-color: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .td-avatar-wrapper img { width: 100%; height: 100%; object-fit: contain; }
+        .td-avatar-wrapper i { font-size: 2.5rem; color: #444; }
+
+        .td-info h1 { font-size: 1.8rem; font-weight: 800; margin: 0 0 8px 0; color: #fff; text-transform: uppercase; }
+        .td-meta { font-size: 0.85rem; display: flex; align-items: center; gap: 15px; color: #aaa; flex-wrap: wrap; }
+        
+        .badge-status { font-weight: 600; display: flex; align-items: center; gap: 5px; }
+        .dot-opening { color: var(--fm-green) !important; font-size: 6px; vertical-align: middle; }
+
+        /* --- TABS --- */
+        .nav-tabs-chess { border-top: 1px solid #2d2d2d; border-bottom: none; display: flex; padding: 0 10px; background: rgba(255,255,255,0.02); margin-top: 10px; }
+        .nav-tabs-chess .nav-link { flex: 1; text-align: center; color: #aaa; border: none; padding: 15px 10px; font-weight: 600; font-size: 0.95rem; border-bottom: 3px solid transparent; transition: 0.2s; border-radius: 0; background: transparent !important; cursor: pointer; }
+        .nav-tabs-chess .nav-link:hover { color: #fff; }
+        .nav-tabs-chess .nav-link.active { color: #fff !important; border-bottom: 3px solid var(--fm-green) !important; }
+        .tab-content { background: transparent; border: none; padding: 0; }
+
+        /* --- INFO BOX --- */
+        .info-box { background: #1a1a1a; border-radius: 12px; padding: 20px 0; margin-bottom: 20px; border: 1px solid #2d2d2d; }
+        .info-title { font-size: 1rem; color: #fff; text-transform: uppercase; font-weight: 800; margin-bottom: 15px; padding: 0 25px; display: flex; align-items: center; gap: 8px; }
+
+        /* --- BẢNG XẾP HẠNG (BXH) --- */
+        .table-ranking { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .table-ranking th { color: #888; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; padding: 12px 10px; border-bottom: 1px solid #333; }
+        .table-ranking td { padding: 12px 10px; border-bottom: 1px solid #2d2d2d; vertical-align: middle; color: #eee; }
+        .table-ranking tbody tr { transition: 0.2s; cursor: pointer; }
+        .table-ranking tbody tr:hover { background-color: #222; }
+        .table-ranking tbody tr:last-child td { border-bottom: none; }
+        
+        .td-rank-num { width: 40px; text-align: center; font-weight: 700; color: #888; }
+        
+        /* Màu Huy Chương Dành Cho Final Rank */
+        .rank-1 { color: #ffc107 !important; text-shadow: 0 0 8px rgba(255,193,7,0.4); }
+        .rank-2 { color: #e0e0e0 !important; text-shadow: 0 0 8px rgba(224,224,224,0.3); }
+        .rank-3 { color: #cd7f32 !important; text-shadow: 0 0 8px rgba(205,127,50,0.4); }
+
+        .player-link { display: flex; align-items: center; gap: 10px; color: #fff; text-decoration: none !important; font-weight: 600; transition: 0.2s; }
+        .player-link:hover { color: #ffc107; }
+        
+        .p-avatar { width: 26px; height: 26px; border-radius: 50%; border: 1px solid #444; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .p-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .col-stat { width: 40px; text-align: center; color: #bbb; }
+        .col-pts { width: 50px; text-align: center; font-weight: 800; color: #fff; font-size: 1rem; }
+        
+        .lineup-btn { color: #0dcaf0; font-size: 0.8rem; margin-left: 8px; transition: 0.2s; }
+        .lineup-btn:hover { color: #fff; }
+
+        /* --- MATCH ROW --- */
+        .match-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 25px; border-bottom: 1px solid #2d2d2d; text-decoration: none !important; transition: 0.2s; cursor: pointer; }
+        .match-row:hover { background: #222; }
+        .match-row:last-child { border-bottom: none; }
+        
+        .m-date { width: 75px; font-size: 0.7rem; color: #bbb; flex-shrink: 0; }
+        .m-main-col { flex-grow: 1; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .m-player-name { color: #fff; font-size: 0.85rem; font-weight: 600; width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none !important; transition: 0.2s; }
+        .m-player-name:hover { color: #ffc107; }
+        .m-player-name.left { text-align: right; }
+        .m-player-name.right { text-align: left; }
+
+        .score-box { display: flex; align-items: center; flex-direction: column; gap: 2px; min-width: 110px; justify-content: center; font-weight: 700; font-size: 0.95rem; color: #fff; }
+        .score-main-row { display: flex; align-items: center; gap: 10px; }
+
+        .m-avatar { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #444; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: #000; }
+        .m-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .m-avatar i { font-size: 0.75rem; color: #666; }
+        
+        .empty-state { text-align: center; padding: 40px 20px; color: #666; font-style: italic; font-size: 0.9rem; }
+        .phase-header { background: #222; padding: 8px 25px; font-size: 0.8rem; font-weight: 800; color: #ffc107; text-transform: uppercase; border-bottom: 1px solid #2d2d2d; }
+
+        /* --- SCROLL CHO DANH SÁCH THÀNH VIÊN --- */
+        .player-list-scroll { max-height: 450px; overflow-y: auto; }
+        .player-list-scroll::-webkit-scrollbar { width: 6px; }
+        .player-list-scroll::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+        .player-list-scroll::-webkit-scrollbar-track { background: transparent; }
+
+        /* --- MODAL ADMIN --- */
+        .td-modal .modal-content { background-color: #1e1e1e !important; color: #fff !important; border: 1px solid #333 !important; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .td-modal .modal-header { border-bottom: 1px solid #333 !important; }
+        .td-modal .modal-title { font-weight: 700; font-size: 1.2rem; }
+        .td-modal .btn-close { filter: invert(1); opacity: 0.5; }
+        .td-modal .form-control, .td-modal .form-select { background-color: #000 !important; border: 1px solid #333 !important; color: #fff !important; padding: 12px; border-radius: 8px; }
+        .td-modal .form-label { font-size: 0.8rem; color: #888; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
+        .td-modal .btn-submit { border-radius: 8px; padding: 12px; font-weight: 800; text-transform: uppercase; width: 100%; border: none; }
+    </style>
+</head>
+<body>
+    <div th:replace="~{fragments/header :: navbar}"></div>
+    
+    <div class="wide-container">
+        <div th:if="${message != null}" class="alert alert-custom alert-dismissible fade show" 
+             th:classappend="${#strings.containsIgnoreCase(message, 'Lỗi')} ? 'bg-danger text-white' : 'bg-dark text-fm-green border border-success'">
+            <span th:text="${message}"></span>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div th:if="${session.logInUser != null and session.logInUser.role == 'ADMIN'}" class="admin-panel">
+            <div class="admin-panel-title"><i class="fas fa-shield-alt"></i> Bảng điều khiển quản trị viên</div>
+            <div class="admin-grid">
+                <button class="btn-admin-uniform" data-bs-toggle="modal" data-bs-target="#bannerModal"><i class="fas fa-image me-1"></i> Đổi Banner</button>
+                <button th:if="${tournament.tournamentType != 'KNOCKOUT'}" class="btn-admin-uniform" data-bs-toggle="modal" data-bs-target="#addPlayerModal"><i class="fas fa-users-cog me-1"></i> Xếp Bảng Người Chơi</button>
+                <button class="btn-admin-uniform" data-bs-toggle="modal" data-bs-target="#addMatchModal"><i class="fas fa-calendar-plus me-1"></i> Xếp Lịch Thi Đấu</button>
+                <button class="btn-admin-uniform" data-bs-toggle="modal" data-bs-target="#uploadLineupModal"><i class="fas fa-tshirt me-1"></i> Cập Nhật Đội Hình</button>
+                <button th:if="${!tournament.opening}" class="btn-admin-uniform" data-bs-toggle="modal" data-bs-target="#updateRankModal"><i class="fas fa-medal me-1"></i> Chốt Hạng Nhận Giải</button>
+                <button th:if="${tournament.opening}" class="btn-admin-danger" data-bs-toggle="modal" data-bs-target="#endTourModal"><i class="fas fa-flag-checkered me-1"></i> Bế Mạc Giải</button>
+            </div>
+        </div>
+
+        <div class="td-header-card">
+            <div class="td-banner">
+                <div class="d-flex align-items-center gap-4">
+                    <div class="td-avatar-wrapper">
+                        <img th:if="${tournament.banner != null}" th:src="@{'/uploads/tournaments/' + ${tournament.banner}}">
+                        <i th:if="${tournament.banner == null}" class="fas fa-trophy"></i>
+                    </div>
+                    <div class="td-info">
+                        <h1 th:text="${tournament.name}"></h1>
+                        
+                        <div class="td-meta mb-2">
+                            <span class="badge-status" th:classappend="${!tournament.opening} ? 'text-danger' : 'text-white'">
+                                <i class="fas fa-circle dot-opening" th:if="${tournament.opening}"></i>
+                                <span th:text="${tournament.opening ? 'Đang diễn ra' : 'Đã kết thúc'}"></span>
+                            </span>
+                            <span>•</span>
+                            <span><i class="fas fa-code-branch me-1"></i> <span th:text="${tournament.tournamentType}"></span></span>
+                        </div>
+                        
+                        <div class="td-meta">
+                            <span><i class="far fa-calendar-alt me-1"></i> Khởi tranh: <span th:text="${#temporals.format(tournament.openDate, 'dd/MM/yyyy')}"></span></span>
+                            
+                            <th:block th:if="${!tournament.opening and tournament.finishDate != null}">
+                                <span>•</span>
+                                <span><i class="fas fa-flag-checkered me-1"></i> Khép lại: <span th:text="${#temporals.format(tournament.finishDate, 'dd/MM/yyyy')}"></span></span>
+                            </th:block>
+                        </div>
+                        
+                    </div>
+                </div>
+
+                <div th:if="${tournament.opening}" class="ms-auto mt-3 mt-md-0">
+                    <th:block th:if="${session.logInUser != null}">
+                        <th:block th:with="isUnregistered=${#lists.contains(unregisteredUsers.![username], session.logInUser.username)}">
+                            <form th:if="${isUnregistered}" th:action="@{|/tournament-detail/${tournament.name}/register|}" method="post" class="m-0">
+                                <button type="submit" class="btn btn-warning fw-bold rounded-pill px-4 shadow-sm" style="font-size: 0.9rem;">
+                                    <i class="fas fa-sign-in-alt me-1"></i> Đăng ký tham gia
+                                </button>
+                            </form>
+                            <div th:if="${!isUnregistered}" class="badge bg-fm-green text-dark px-3 py-2 fs-6 rounded-pill">
+                                <i class="fas fa-check-circle me-1"></i> Đã tham gia
+                            </div>
+                        </th:block>
+                    </th:block>
+                    <div th:if="${session.logInUser == null}" class="badge bg-secondary px-3 py-2 fs-6 rounded-pill">
+                        Đăng nhập để ghi danh
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="nav nav-tabs nav-tabs-chess" id="tourTabs" role="tablist">
+                <button th:if="${tournament.tournamentType != 'KNOCKOUT'}" class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-ranking" type="button">Bảng xếp hạng</button>
+                <button class="nav-link" th:classappend="${tournament.tournamentType == 'KNOCKOUT' ? 'active' : ''}" data-bs-toggle="tab" data-bs-target="#tab-matches" type="button">Lịch thi đấu & Kết quả</button>
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-players" type="button">Thành viên</button>
+            </nav>
+        </div>
+
+        <div class="tab-content">
+            
+            <div th:if="${tournament.tournamentType != 'KNOCKOUT'}" class="tab-pane fade show active" id="tab-ranking" role="tabpanel">
+                
+                <div th:each="group : ${rankingsByGroup}" th:if="${group.key != '⏳ DANH SÁCH CHỜ'}" class="info-box">
+                    <div class="info-title">
+                        <span><i class="fas fa-list-ol text-warning me-2"></i> <span th:text="${group.key}"></span></span>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table-ranking">
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width: 50px;">#</th>
+                                    <th>Người chơi</th>
+                                    <th class="col-stat" title="Số trận đã đá">Tr</th>
+                                    <th class="col-stat" title="Thắng">T</th>
+                                    <th class="col-stat" title="Hòa">H</th>
+                                    <th class="col-stat" title="Thua">B</th>
+                                    <th class="col-stat" title="Bàn thắng - Bàn thua" style="width: 70px;">BT-SBT</th>
+                                    <th class="col-stat" title="Hiệu số">HS</th>
+                                    <th class="col-pts" title="Điểm số">Đ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="r, stat : ${group.value}" th:data-url="@{'/profile/' + ${r.user.username}}" onclick="window.location.href=this.getAttribute('data-url')">
+                                    <td class="td-rank-num" th:text="${stat.count}"></td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <a th:href="@{'/profile/' + ${r.user.username}}" class="player-link" onclick="event.stopPropagation()">
+                                                <div class="p-avatar">
+                                                    <img th:if="${r.user.avatar != null}" th:src="@{'/uploads/avatars/' + ${r.user.avatar}}">
+                                                    <i th:if="${r.user.avatar == null}" class="fas fa-user" style="font-size: 0.6rem; color: #666;"></i>
+                                                </div>
+                                                <span th:text="${r.user.username}"></span>
+                                            </a>
+                                            <a th:if="${r.lineupImage != null}" th:href="@{'/uploads/lineups/' + ${r.lineupImage}}" target="_blank" class="lineup-btn" title="Xem Đội Hình" onclick="event.stopPropagation()">
+                                                <i class="fas fa-tshirt"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                    <td class="col-stat" th:text="${r.matchesPlayed}"></td>
+                                    <td class="col-stat" th:text="${r.wins}"></td>
+                                    <td class="col-stat" th:text="${r.draws}"></td>
+                                    <td class="col-stat" th:text="${r.losses}"></td>
+                                    <td class="col-stat" th:text="${r.goals + ' - ' + r.conceded}"></td>
+                                    <td class="col-stat fw-bold" th:text="${r.difference > 0 ? '+' + r.difference : r.difference}" th:classappend="${r.difference > 0 ? 'text-fm-green' : (r.difference < 0 ? 'text-danger' : '')}"></td>
+                                    <td class="col-pts" th:text="${r.points}"></td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(group.value)}">
+                                    <td colspan="9" class="empty-state">Chưa có dữ liệu bảng này.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div th:if="${#maps.isEmpty(rankingsByGroup)}" class="info-box empty-state">
+                    Chưa có người chơi nào được xếp bảng.
+                </div>
+            </div>
+
+            <div class="tab-pane fade" th:classappend="${tournament.tournamentType == 'KNOCKOUT' ? 'show active' : ''}" id="tab-matches" role="tabpanel">
+                
+                <div class="info-box">
+                    <div class="info-title"><i class="fas fa-futbol text-success"></i> Các trận đấu</div>
+                    
+                    <th:block th:if="${matchesByRound != null and not #maps.isEmpty(matchesByRound)}">
+                        <div th:each="entry : ${matchesByRound}">
+                            <div class="phase-header text-fm-green">Vòng <span th:text="${entry.key}"></span> (Vòng Bảng)</div>
+                            <div th:each="m : ${entry.value}" class="match-row" th:data-url="@{'/match-detail/' + ${m.id}}" onclick="window.location.href=this.getAttribute('data-url')">
+                                <div class="m-date" th:text="${m.date != null ? #temporals.format(m.date, 'dd/MM HH:mm') : 'Chưa xếp lịch'}"></div>
+                                <div class="m-main-col">
+                                    <a th:href="@{'/profile/' + ${m.player1.username}}" class="m-player-name left" onclick="event.stopPropagation()" th:text="${m.player1.username}"></a>
+                                    <div class="score-box">
+                                        <div class="score-main-row">
+                                            <div class="m-avatar"><img th:if="${m.player1.avatar != null}" th:src="@{'/uploads/avatars/' + ${m.player1.avatar}}"><i th:if="${m.player1.avatar == null}" class="fas fa-user"></i></div>
+                                            <span th:if="${m.upcoming}" class="text-info" style="font-size: 0.8rem; text-transform: lowercase;">vs</span>
+                                            <span th:if="${!m.upcoming}" th:text="${m.player1Score + ' - ' + m.player2Score}"></span>
+                                            <div class="m-avatar"><img th:if="${m.player2.avatar != null}" th:src="@{'/uploads/avatars/' + ${m.player2.avatar}}"><i th:if="${m.player2.avatar == null}" class="fas fa-user"></i></div>
+                                        </div>
+                                    </div>
+                                    <a th:href="@{'/profile/' + ${m.player2.username}}" class="m-player-name right" onclick="event.stopPropagation()" th:text="${m.player2.username}"></a>
+                                </div>
+                            </div>
+                        </div>
+                    </th:block>
+
+                    <th:block th:if="${knockoutMatches != null and not #maps.isEmpty(knockoutMatches)}">
+                        <div th:each="entry : ${knockoutMatches}">
+                            <div class="phase-header text-warning"><i class="fas fa-trophy me-2"></i><span th:text="${entry.key}"></span></div>
+                            <div th:each="m : ${entry.value}" class="match-row" th:data-url="@{'/match-detail/' + ${m.id}}" onclick="window.location.href=this.getAttribute('data-url')">
+                                <div class="m-date" th:text="${m.date != null ? #temporals.format(m.date, 'dd/MM HH:mm') : 'Chưa xếp lịch'}"></div>
+                                <div class="m-main-col">
+                                    <a th:href="@{'/profile/' + ${m.player1.username}}" class="m-player-name left" onclick="event.stopPropagation()" th:text="${m.player1.username}"></a>
+                                    <div class="score-box">
+                                        <div class="score-main-row">
+                                            <div class="m-avatar"><img th:if="${m.player1.avatar != null}" th:src="@{'/uploads/avatars/' + ${m.player1.avatar}}"><i th:if="${m.player1.avatar == null}" class="fas fa-user"></i></div>
+                                            <span th:if="${m.upcoming}" class="text-info" style="font-size: 0.8rem; text-transform: lowercase;">vs</span>
+                                            <span th:if="${!m.upcoming}" th:text="${m.player1Score + ' - ' + m.player2Score}"></span>
+                                            <div class="m-avatar"><img th:if="${m.player2.avatar != null}" th:src="@{'/uploads/avatars/' + ${m.player2.avatar}}"><i th:if="${m.player2.avatar == null}" class="fas fa-user"></i></div>
+                                        </div>
+                                        <div th:if="${m.player1Pen != null}" class="text-warning mt-1" style="font-size: 0.65rem;">
+                                            Pen: [[${m.player1Pen}]] - [[${m.player2Pen}]]
+                                        </div>
+                                    </div>
+                                    <a th:href="@{'/profile/' + ${m.player2.username}}" class="m-player-name right" onclick="event.stopPropagation()" th:text="${m.player2.username}"></a>
+                                </div>
+                            </div>
+                        </div>
+                    </th:block>
+
+                    <div th:if="${(matchesByRound == null or #maps.isEmpty(matchesByRound)) and (knockoutMatches == null or #maps.isEmpty(knockoutMatches))}" class="empty-state">
+                        Chưa có lịch thi đấu nào.
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-players" role="tabpanel">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="info-box h-100 mb-0">
+                            <div class="info-title"><i class="fas fa-check-circle text-fm-green"></i> Đã tham gia (<span th:text="${#lists.size(tournament.ranking)}"></span>)</div>
+                            
+                            <div class="player-list-scroll d-flex flex-column">
+                                <div th:each="r : ${tournament.ranking}" class="match-row w-100" 
+                                     th:style="${!tournament.opening and r.finalRank != null ? 'order: ' + r.finalRank : 'order: 999'}"
+                                     th:data-url="@{'/profile/' + ${r.user.username}}" onclick="window.location.href=this.getAttribute('data-url')">
+                                    
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div th:if="${!tournament.opening and r.finalRank != null}" 
+                                             class="fw-bold fs-6" 
+                                             style="width: 25px; text-align: center;"
+                                             th:classappend="${r.finalRank == 1 ? 'rank-1' : (r.finalRank == 2 ? 'rank-2' : (r.finalRank == 3 ? 'rank-3' : 'text-warning'))}">
+                                            [[${r.finalRank}]]
+                                        </div>
+                                        <div th:if="${!tournament.opening and r.finalRank == null}" class="text-muted fw-bold fs-6" style="width: 25px; text-align: center;">-</div>
+                                        
+                                        <div class="p-avatar">
+                                            <img th:if="${r.user.avatar != null}" th:src="@{'/uploads/avatars/' + ${r.user.avatar}}">
+                                            <i th:if="${r.user.avatar == null}" class="fas fa-user text-secondary" style="font-size: 0.8rem;"></i>
+                                        </div>
+                                        <span class="text-white fw-bold" th:text="${r.user.username}"></span>
+                                    </div>
+                                    <span class="text-warning fw-bold" style="font-size: 0.85rem;"><i class="fas fa-bolt me-1"></i>[[${r.user.elo}]]</span>
+                                </div>
+                                <div th:if="${#lists.isEmpty(tournament.ranking)}" class="empty-state">Chưa có ai đăng ký tham gia.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="info-box h-100 mb-0">
+                            <div class="info-title"><i class="fas fa-user-clock text-warning"></i> Chưa đăng ký (<span th:text="${#lists.size(unregisteredUsers)}"></span>)</div>
+                            
+                            <div class="player-list-scroll d-flex flex-column">
+                                <div th:each="u : ${unregisteredUsers}" class="match-row w-100" th:data-url="@{'/profile/' + ${u.username}}" onclick="window.location.href=this.getAttribute('data-url')">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="p-avatar">
+                                            <img th:if="${u.avatar != null}" th:src="@{'/uploads/avatars/' + ${u.avatar}}">
+                                            <i th:if="${u.avatar == null}" class="fas fa-user text-secondary" style="font-size: 0.8rem;"></i>
+                                        </div>
+                                        <span class="text-white fw-bold" th:text="${u.username}"></span>
+                                    </div>
+                                    <span class="text-warning fw-bold" style="font-size: 0.85rem;"><i class="fas fa-bolt me-1"></i>[[${u.elo}]]</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <th:block th:if="${session.logInUser != null and session.logInUser.role == 'ADMIN'}">
+        
+        <div class="modal fade td-modal" id="bannerModal">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form th:action="@{|/admin/tournament-detail/${tournament.name}/upload-banner|}" method="post" enctype="multipart/form-data">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Cập nhật Banner Giải</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="file" name="bannerFile" class="form-control" accept="image/*" required>
+                        </div>
+                        <div class="modal-footer border-0">
+                            <button type="submit" class="btn btn-primary btn-submit">TẢI LÊN</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade td-modal" id="addPlayerModal">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form th:action="@{|/admin/tournament-detail/${tournament.name}/add-player|}" method="post">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Xếp người chơi vào Bảng</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Chọn người chờ</label>
+                                <select name="username" class="form-select" required>
+                                    <option value="">-- Chọn thành viên --</option>
+                                    <option th:each="r : ${tournament.ranking}" 
+                                            th:if="${r.groupName == null or r.groupName == ''}" 
+                                            th:value="${r.user.username}" 
+                                            th:text="${r.user.username}"></option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">Tên bảng (Nhánh)</label>
+                                <input type="text" name="groupName" class="form-control" placeholder="VD: Bảng A, Bảng B..." required>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0">
+                            <button type="submit" class="btn btn-info btn-submit text-dark">THÊM VÀO BẢNG</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade td-modal" id="addMatchModal">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form th:action="@{|/admin/tournament-detail/${tournament.name}/add-match|}" method="post">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Xếp Lịch Trận Đấu</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-2 mb-3">
+                                <div class="col-5">
+                                    <label class="form-label text-fm-green">Chủ nhà (P1)</label>
+                                    <select name="p1" class="form-select" required>
+                                        <option th:each="r : ${tournament.ranking}" th:value="${r.user.username}" th:text="${r.user.username}"></option>
+                                    </select>
+                                </div>
+                                <div class="col-2 d-flex align-items-end justify-content-center pb-2 text-info fw-bold">VS</div>
+                                <div class="col-5">
+                                    <label class="form-label text-danger">Khách (P2)</label>
+                                    <select name="p2" class="form-select" required>
+                                        <option th:each="r : ${tournament.ranking}" th:value="${r.user.username}" th:text="${r.user.username}"></option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Giai đoạn thi đấu</label>
+                                <select name="matchType" class="form-select" required>
+                                    <option value="GROUP">Vòng bảng (Tính điểm)</option>
+                                    <option value="KNOCKOUT">Vòng loại trực tiếp</option>
+                                </select>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label">Tên Vòng</label>
+                                    <input type="text" name="phaseName" class="form-control" placeholder="VD: Tứ kết, Lượt 1...">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">Thứ tự ưu tiên sort</label>
+                                    <input type="number" name="roundNumber" class="form-control" value="1" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0">
+                            <button type="submit" class="btn btn-success btn-submit">TẠO TRẬN ĐẤU</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade td-modal" id="uploadLineupModal">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form th:action="@{|/admin/tournament-detail/${tournament.name}/upload-lineup|}" method="post" enctype="multipart/form-data">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Tải lên sơ đồ Đội Hình</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Người chơi</label>
+                                <select name="username" class="form-select" required>
+                                    <option th:each="r : ${tournament.ranking}" th:value="${r.user.username}" th:text="${r.user.username}"></option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">File ảnh</label>
+                                <input type="file" name="lineupFile" class="form-control" accept="image/*" required>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0">
+                            <button type="submit" class="btn btn-warning btn-submit text-dark">LƯU ĐỘI HÌNH</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade td-modal" id="updateRankModal">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form th:action="@{|/admin/tournament-detail/${tournament.name}/update-final-rank|}" method="post">
+                        <div class="modal-header">
+                            <h5 class="modal-title text-warning">Chốt Danh Hiệu Chung Cuộc</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Chọn người nhận giải</label>
+                                <select name="rankingId" class="form-select" required>
+                                    <option value="">-- Chọn thành viên --</option>
+                                    <th:block th:if="${rankingsByGroup != null}">
+                                        <optgroup th:each="group : ${rankingsByGroup}" th:if="${group.key != '⏳ DANH SÁCH CHỜ'}" th:label="${group.key}">
+                                            <option th:each="r : ${group.value}" th:value="${r.id}" th:text="${r.user.username}"></option>
+                                        </optgroup>
+                                    </th:block>
+                                    <th:block th:if="${rankingsByGroup == null}">
+                                        <option th:each="r : ${tournament.ranking}" th:value="${r.id}" th:text="${r.user.username}"></option>
+                                    </th:block>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">Hạng đạt được</label>
+                                <input type="number" name="finalRank" class="form-control" placeholder="VD: 1 (Vô địch), 2 (Á quân)..." required>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0">
+                            <button type="submit" class="btn btn-secondary btn-submit">TRAO GIẢI</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade td-modal" id="endTourModal">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-danger">
+                    <form th:action="@{|/admin/tournament-detail/${tournament.name}/end-tournament|}" method="post">
+                        <div class="modal-header border-0 pb-0">
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body text-center pt-0">
+                            <i class="fas fa-exclamation-triangle text-danger mb-3" style="font-size: 3rem;"></i>
+                            <h5 class="text-white fw-bold">Xác nhận Bế Mạc Giải?</h5>
+                            <p class="text-muted small">Hành động này sẽ khóa trạng thái giải đấu về <b>"Đã kết thúc"</b> và cập nhật lên hệ thống.</p>
+                        </div>
+                        <div class="modal-footer border-0">
+                            <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Hủy</button>
+                            <button type="submit" class="btn btn-danger fw-bold">CHỐT KẾT THÚC GIẢI</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </th:block>
+
+    <th:block th:replace="~{fragments/header :: scripts}"></th:block>
+</body>
+</html>

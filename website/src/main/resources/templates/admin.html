@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/header :: head}"></th:block>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        /* CSS CÔ LẬP HOÀN TOÀN - TIỀN TỐ adv2- ĐỂ TRÁNH LỖI SEARCH HEADER */
+        body { font-family: 'Roboto', sans-serif !important; background-color: #000000; color: #ffffff; margin: 0; }
+        .adv2-container { max-width: 1150px !important; margin: 0 auto; padding: 20px; }
+
+        :root { --fm-green: #11cd76; }
+        .text-fm-green { color: var(--fm-green) !important; }
+
+        /* --- HEADER CARD --- */
+        .adv2-header-card { background-color: #1a1a1a; border-radius: 12px; border: 1px solid #2d2d2d; overflow: hidden; margin-bottom: 20px; }
+        .adv2-banner { padding: 30px 30px 10px 30px; }
+        .adv2-banner h1 { font-size: 1.8rem; font-weight: 700; text-transform: uppercase; margin: 0; color: #fff; }
+        .adv2-banner p { color: #888; font-size: 0.9rem; margin-top: 5px; }
+
+        /* --- TABS ĐỒNG BỘ --- */
+        .nav-tabs-chess { border-top: 1px solid #2d2d2d; border-bottom: none; display: flex; padding: 0 10px; background: rgba(255,255,255,0.02); }
+        .nav-tabs-chess .nav-link { 
+            flex: 1; text-align: center; color: #aaa; border: none; padding: 15px 10px; font-weight: 600; font-size: 0.95rem; 
+            border-bottom: 3px solid transparent; transition: 0.2s; border-radius: 0; background: transparent !important; cursor: pointer;
+        }
+        .nav-tabs-chess .nav-link:hover { color: #fff; }
+        .nav-tabs-chess .nav-link.active { color: #fff !important; border-bottom: 3px solid var(--fm-green) !important; }
+
+        /* --- CONTENT BOX --- */
+        .adv2-info-box { background: #1a1a1a; border-radius: 12px; padding: 25px; margin-bottom: 20px; border: 1px solid #2d2d2d; height: 100%; }
+        .adv2-title { font-size: 1rem; color: #fff; font-weight: 800; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #2d2d2d; padding-bottom: 15px; text-transform: uppercase; }
+
+        /* --- LIST ROWS --- */
+        .adv2-list-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; border-bottom: 1px solid #2d2d2d; text-decoration: none !important; transition: 0.2s; }
+        .adv2-list-row:hover { background: #222; }
+        .adv2-list-row:last-child { border-bottom: none; }
+        
+        .adv2-item-link { color: #fff; font-weight: 600; transition: 0.2s; text-decoration: none !important; }
+        .adv2-list-row:hover .adv2-item-link { color: #ffc107; }
+
+        .adv2-avatar { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #444; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background-color: #000; }
+        .adv2-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+        .adv2-tour-banner { width: 38px; height: 38px; border-radius: 8px; border: 1px solid #444; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background-color: #000; }
+        .adv2-tour-banner img { width: 100%; height: 100%; object-fit: contain; }
+
+        /* --- FORMS & PLACEHOLDER MỜ --- */
+        .adv2-form-group { margin-bottom: 20px; }
+        .adv2-input, .adv2-select { background-color: #000 !important; border: 1px solid #333 !important; color: #fff !important; padding: 12px 15px; border-radius: 8px; width: 100%; outline: none; transition: 0.2s; }
+        .adv2-input:focus, .adv2-select:focus { border-color: #ffc107 !important; }
+        
+        .adv2-input::placeholder { color: #414040 !important; opacity: 1; }
+        
+        .adv2-label { font-size: 0.75rem; color: #888; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; }
+        
+        .adv2-btn-submit { background-color: #0d6efd; color: #fff; border-radius: 8px; padding: 14px; font-weight: 800; text-transform: uppercase; width: 100%; border: none; transition: 0.2s; cursor: pointer; }
+        .adv2-btn-submit:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        .adv2-empty { text-align: center; color: #555; padding: 30px 0; font-style: italic; }
+        .adv2-badge { font-size: 0.8rem; font-weight: 500; }
+        
+        /* CHẤM XANH CHUẨN */
+        .dot-opening { color: var(--fm-green) !important; font-size: 6px; vertical-align: middle; margin-right: 6px; }
+    </style>
+</head>
+<body>
+
+    <div th:replace="~{fragments/header :: navbar}"></div>
+
+    <div class="adv2-container">
+        
+        <div th:if="${message != null}" class="alert alert-dismissible fade show mt-2 mb-4" 
+             th:classappend="${#strings.containsIgnoreCase(message, 'Lỗi')} ? 'bg-danger text-white border-0' : 'bg-dark text-fm-green border border-success'" role="alert">
+            <i th:class="${#strings.containsIgnoreCase(message, 'Lỗi')} ? 'fas fa-exclamation-triangle me-2' : 'fas fa-check-circle me-2'"></i> 
+            <span th:text="${message}"></span>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="adv2-header-card">
+            <div class="adv2-banner">
+                <h1>Hệ Thống Quản Trị</h1>
+                <p>Chào mừng Admin!!!</p>
+            </div>
+            <nav class="nav nav-tabs nav-tabs-chess" id="adminTabs" role="tablist">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-players" type="button">Người chơi</button>
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-matches" type="button">Trận đấu</button>
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-tours" type="button">Giải đấu</button>
+            </nav>
+        </div>
+
+        <div class="tab-content" id="adminTabsContent">
+            
+            <div class="tab-pane fade show active" id="tab-players" role="tabpanel">
+                <div class="row g-4">
+                    <div class="col-lg-7">
+                        <div class="adv2-info-box">
+                            <div class="adv2-title"><i class="fas fa-users text-primary"></i> Danh sách thành viên</div>
+                            <div style="max-height: 550px; overflow-y: auto;">
+                                <div th:each="u : ${allUsers}" class="adv2-list-row">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="adv2-avatar">
+                                            <img th:if="${u.avatar != null}" th:src="@{|/uploads/avatars/${u.avatar}|}">
+                                            <i th:if="${u.avatar == null}" class="fas fa-user text-secondary" style="font-size: 0.7rem;"></i>
+                                        </div>
+                                        <a th:href="@{|/profile/${u.username}|}" class="adv2-item-link" th:text="${u.username}"></a>
+                                    </div>
+                                    <div class="text-warning fw-bold" style="font-size: 0.9rem;">
+                                        </i> <span th:text="${u.elo}"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-5">
+                        <div class="adv2-info-box">
+                            <div class="adv2-title text-primary"><i class="fas fa-user-plus"></i> Thêm người chơi mới</div>
+                            <form th:action="@{/admin/add-player}" method="post">
+                                <div class="adv2-form-group">
+                                    <label class="adv2-label">Tên tài khoản (Username)</label>
+                                    <input type="text" name="username" class="adv2-input" placeholder="Nhập tên đăng nhập..." required>
+                                </div>
+                                <div class="adv2-form-group">
+                                    <label class="adv2-label">Elo khởi điểm</label>
+                                    <input type="number" name="initialElo" class="adv2-input" value="1200" required>
+                                </div>
+                                <button type="submit" class="adv2-btn-submit">Khởi tạo tài khoản</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-matches" role="tabpanel">
+                <div class="row g-4">
+                    <div class="col-lg-7">
+                        <div class="adv2-info-box">
+                            <div class="adv2-title text-success"><i class="fas fa-futbol"></i> Cập nhật tỷ số trận đấu</div>
+                            <form th:action="@{/admin/complete-match}" method="post">
+                                <div th:if="${not #lists.isEmpty(allUpcomingMatch)}">
+                                    <div class="adv2-form-group">
+                                        <label class="adv2-label">Chọn trận đấu</label>
+                                        <select name="matchID" class="adv2-select" required>
+                                            <option value="">-- Chọn trận đấu --</option>
+                                            <option th:each="m : ${allUpcomingMatch}" th:value="${m.id}" 
+                                                    th:text="${m.player1.username + ' vs ' + m.player2.username + ' (' + (m.tournament != null ? m.tournament.name : 'Giao hữu') + ')'}">
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-6">
+                                            <label class="adv2-label">Bàn thắng P1</label>
+                                            <input type="number" name="score1" class="adv2-input" min="0"  required>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="adv2-label">Bàn thắng P2</label>
+                                            <input type="number" name="score2" class="adv2-input" min="0"  required>
+                                        </div>
+                                    </div>
+                                    <div class="row g-3 mb-4">
+                                        <div class="col-6">
+                                            <label class="adv2-label">Penalty P1 (Nếu có)</label>
+                                            <input type="number" name="pen1" class="adv2-input" min="0" >
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="adv2-label">Penalty P2 (Nếu có)</label>
+                                            <input type="number" name="pen2" class="adv2-input" min="0" >
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="adv2-btn-submit" style="background-color: var(--fm-green); color: #000;">Xác nhận tỷ số</button>
+                                </div>
+                                <div th:if="${#lists.isEmpty(allUpcomingMatch)}" class="adv2-empty">
+                                    <i class="fas fa-check-circle text-fm-green fs-1 d-block mb-3"></i>
+                                    Tất cả trận đấu đã được cập nhật tỷ số.
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="col-lg-5">
+                        <div class="adv2-info-box">
+                            <div class="adv2-title text-info"><i class="fas fa-handshake"></i> Lên lịch giao hữu</div>
+                            <form th:action="@{/admin/create-match}" method="post">
+                                <div class="adv2-form-group">
+                                    <label class="adv2-label">Người chơi 1 (Chủ nhà)</label>
+                                    <select name="player1" class="adv2-select" required>
+                                        <option value="">-- Chọn --</option>
+                                        <option th:each="u : ${allUsers}" th:value="${u.username}" th:text="${u.username}"></option>
+                                    </select>
+                                </div>
+                                <div class="text-center text-info fw-bold mb-3">VS</div>
+                                <div class="adv2-form-group">
+                                    <label class="adv2-label">Người chơi 2 (Đội khách)</label>
+                                    <select name="player2" class="adv2-select" required>
+                                        <option value="">-- Chọn --</option>
+                                        <option th:each="u : ${allUsers}" th:value="${u.username}" th:text="${u.username}"></option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="adv2-btn-submit" style="background-color: #0dcaf0; color: #000;">Tạo trận ngay</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-tours" role="tabpanel">
+                <div class="row g-4">
+                    <div class="col-lg-7">
+                        <div class="adv2-info-box">
+                            <div class="adv2-title text-warning"><i class="fas fa-trophy"></i> Các giải đấu đang mở</div>
+                            <div class="adv2-list">
+                                <div th:each="t : ${ongoingTournaments}" class="adv2-list-row">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="adv2-tour-banner">
+                                            <img th:if="${t.banner != null}" th:src="@{'/uploads/tournaments/' + ${t.banner}}">
+                                            <i th:if="${t.banner == null}" class="fas fa-trophy text-secondary" style="font-size: 1.1rem;"></i>
+                                        </div>
+                                        <a th:href="@{|/tournament-detail/${t.name}|}" class="adv2-item-link" th:text="${t.name}"></a>
+                                    </div>
+                                    <span class="adv2-badge text-secondary">
+                                        <i class="fas fa-circle dot-opening"></i>Đang diễn ra
+                                    </span>
+                                </div>
+                                <div th:if="${#lists.isEmpty(ongoingTournaments)}" class="adv2-empty">Hiện không có giải đấu nào đang chạy.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-5">
+                        <div class="adv2-info-box">
+                            <div class="adv2-title text-warning"><i class="fas fa-plus-circle"></i> Khởi tạo giải đấu</div>
+                            <form th:action="@{/admin/create-tournament}" method="post">
+                                <div class="adv2-form-group">
+                                    <label class="adv2-label">Tên giải đấu</label>
+                                    <input type="text" name="name" class="adv2-input" placeholder="VD: Summer Cup 2026..." required>
+                                </div>
+                                <div class="adv2-form-group">
+                                    <label class="adv2-label">Thể thức thi đấu</label>
+                                    <select name="type" class="adv2-select" required>
+                                        <option value="LEAGUE">Vòng Tròn (League)</option>
+                                        <option value="KNOCKOUT">Loại Trực Tiếp (Knockout)</option>
+                                        <option value="MIXED">Hỗn Hợp (Group + KO)</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="adv2-btn-submit" style="background-color: #ffc107; color: #000;">Khởi tạo giải</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <th:block th:replace="~{fragments/header :: scripts}"></th:block>
+</body>
+</html>

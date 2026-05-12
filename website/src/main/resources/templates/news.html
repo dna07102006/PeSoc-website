@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/header :: head}"></th:block>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Roboto', sans-serif !important; background-color: #000000; color: #ffffff; margin: 0; }
+        /* Kéo rộng container ra một chút theo ý bạn */
+        .wide-container { max-width: 1200px !important; margin: 0 auto; padding: 20px; }
+
+        :root { --fm-green: #11cd76; }
+        .text-fm-green { color: var(--fm-green) !important; }
+
+        /* --- INFO BOX (BẢNG MÀU XÁM CHUNG) --- */
+        .info-box { background: #1a1a1a; border-radius: 12px; border: 1px solid #2d2d2d; padding: 25px; margin-bottom: 25px; }
+        .section-title { font-size: 1.1rem; font-weight: 800; color: #fff; text-transform: uppercase; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+
+        /* --- HEADER CARD RIÊNG CHO TIÊU ĐỀ --- */
+        .page-title { font-size: 1.5rem; font-weight: 800; margin: 0; color: #fff; text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
+        .page-title i { color: #0dcaf0; }
+        
+        .tag-filter { background: rgba(17, 205, 118, 0.1); border: 1px solid var(--fm-green); color: var(--fm-green); padding: 5px 15px; border-radius: 20px; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; }
+        .tag-filter a { color: var(--fm-green); text-decoration: none; }
+        .tag-filter a:hover { color: #fff; }
+
+        /* --- FOTMOB HERO SECTION (Main + Side) --- */
+        .news-hero-container { display: flex; gap: 30px; }
+        
+        /* 1. Tin chính to nhất (Hero Main) */
+        .hero-main { flex: 1.5; position: relative; border-radius: 8px; overflow: hidden; display: flex; height: 420px; text-decoration: none !important; cursor: pointer; }
+        .hero-main img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; }
+        .hero-main:hover img { transform: scale(1.05); }
+        .hero-gradient { position: absolute; bottom: 0; left: 0; width: 100%; height: 70%; background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0) 100%); pointer-events: none; }
+        .hero-content { position: absolute; bottom: 0; left: 0; padding: 25px; width: 100%; z-index: 2; }
+        /* Tự động cắt dòng chữ quá dài (3 dòng) */
+        .hero-title { font-size: 1.8rem; font-weight: 800; color: #fff; line-height: 1.3; margin-bottom: 10px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); transition: 0.2s; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        .hero-main:hover .hero-title { color: var(--fm-green); text-decoration: underline; text-underline-offset: 4px; }
+        .hero-meta { font-size: 0.85rem; color: #ccc; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        .hero-meta .author { color: var(--fm-green); }
+        
+        /* 2. Tin phụ bên cạnh (Hero Side - List Format) */
+        .hero-side { flex: 1; display: flex; flex-direction: column; }
+        
+        .list-item { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; border-bottom: 1px solid #2d2d2d; text-decoration: none !important; cursor: pointer; transition: 0.2s; }
+        .list-item:first-child { padding-top: 0; }
+        .list-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .list-item:hover .li-title { color: var(--fm-green); }
+        .list-item:hover .li-thumb img { transform: scale(1.1); }
+        
+        .li-info { flex-grow: 1; padding-right: 20px; }
+        /* Tự động cắt dòng chữ quá dài (2 dòng) */
+        .li-title { font-size: 1rem; font-weight: 700; color: #fff; line-height: 1.4; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; transition: 0.2s; }
+        .li-meta { font-size: 0.8rem; color: #888; font-weight: 500; }
+        
+        .li-thumb { width: 110px; height: 75px; flex-shrink: 0; border-radius: 6px; overflow: hidden; background: #000; border: 1px solid #222; }
+        .li-thumb img { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
+
+        /* --- Modifier cho list bên dưới (Chữ nhỏ lại chuẩn FotMob) --- */
+        .list-item.large { padding: 15px 0; }
+        .list-item.large .li-title { font-size: 1rem; -webkit-line-clamp: 2; margin-bottom: 6px; }
+        .list-item.large .li-meta { font-size: 0.75rem; }
+        .list-item.large .li-thumb { width: 130px; height: 80px; border-radius: 6px; }
+
+        .empty-state { text-align: center; padding: 40px 20px; color: #666; }
+
+        /* --- PHÂN TRANG (PAGINATION) --- */
+        .pagination-container { display: flex; justify-content: center; margin-top: 10px; margin-bottom: 20px; }
+        .pagination { display: flex; list-style: none; padding: 0; margin: 0; gap: 8px; }
+        .page-item .page-link { background: #1a1a1a; border: 1px solid #333; color: #aaa; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: 0.2s; }
+        .page-item .page-link:hover { background: #333; color: #fff; border-color: #555; }
+        .page-item.active .page-link { background: var(--fm-green); color: #000; border-color: var(--fm-green); }
+        .page-item.disabled .page-link { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
+
+        /* RESPONSIVE */
+        @media (max-width: 900px) {
+            .news-hero-container { flex-direction: column; }
+            .hero-main { height: 300px; flex: none; }
+            .list-item:first-child { padding-top: 18px; } 
+        }
+        @media (max-width: 600px) {
+            .hero-title { font-size: 1.4rem; }
+            .li-thumb { width: 90px; height: 60px; }
+            .list-item.large .li-thumb { width: 100px; height: 65px; }
+            .list-item.large .li-title { font-size: 0.95rem; }
+        }
+    </style>
+</head>
+<body>
+    <div th:replace="~{fragments/header :: navbar}"></div>
+    
+    <div class="wide-container">
+        
+        <div class="info-box d-flex align-items-center justify-content-between" style="padding: 20px 25px; margin-bottom: 25px;">
+            <div>
+                <h1 class="page-title m-0"><i class="far fa-newspaper me-2"></i> Tin tức PESOC</h1>
+                <div th:if="${currentTag != null}" class="tag-filter mt-2 mb-0">
+                    <span><i class="fas fa-hashtag"></i> [[${currentTag}]]</span>
+                    <a th:href="@{/news}" title="Xóa bộ lọc"><i class="fas fa-times-circle ms-2"></i></a>
+                </div>
+            </div>
+            
+            <a th:if="${session.logInUser != null}" th:href="@{/news/create}" class="btn btn-warning fw-bold rounded-pill px-4" style="font-size: 0.9rem;">
+                <i class="fas fa-pen me-1"></i> Viết bài
+            </a>
+        </div>
+
+        <div th:if="${#lists.isEmpty(articlePage.content)}" class="info-box empty-state">
+            <i class="far fa-newspaper fs-1 mb-3"></i>
+            <p>Chưa có bài viết nào được đăng trên hệ thống.</p>
+        </div>
+
+        <div class="info-box" th:if="${articlePage.number == 0 and not #lists.isEmpty(articlePage.content)}">
+            <div class="news-hero-container">
+                
+                <a th:with="main=${articlePage.content[0]}" th:href="@{'/news/' + ${main.id}}" class="hero-main">
+                    <img th:src="${main.thumbnail != null ? '/uploads/news/' + main.thumbnail : '/images/news/default.jpg'}">
+                    <div class="hero-gradient"></div>
+                    <div class="hero-content">
+                        <div class="hero-title" th:text="${main.title}"></div>
+                        <div class="hero-meta">
+                            <span class="author">[[${main.author.username}]]</span>
+                            <span>•</span> 
+                            <span th:text="${#temporals.format(main.createdAt, 'dd/MM/yyyy HH:mm')}"></span>
+                        </div>
+                    </div>
+                </a>
+
+                <div class="hero-side" th:if="${#lists.size(articlePage.content) > 1}">
+                    <div class="section-title">Mới nhất</div>
+                    
+                    <a th:each="a, stat : ${articlePage.content}" th:if="${stat.index > 0 and stat.index <= 4}" th:href="@{'/news/' + ${a.id}}" class="list-item">
+                        <div class="li-info">
+                            <div class="li-title" th:text="${a.title}"></div>
+                            <div class="li-meta">
+                                <span th:text="${a.author.username}"></span> • <span th:text="${#temporals.format(a.createdAt, 'dd/MM/yyyy')}"></span>
+                            </div>
+                        </div>
+                        <div class="li-thumb">
+                            <img th:src="${a.thumbnail != null ? '/uploads/news/' + a.thumbnail : '/images/news/default.jpg'}">
+                        </div>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+
+        <div class="info-box" th:if="${(articlePage.number == 0 and #lists.size(articlePage.content) > 5) or (articlePage.number > 0 and not #lists.isEmpty(articlePage.content))}">
+            <div class="section-title" th:if="${articlePage.number == 0}">Tin tức khác</div>
+            
+            <a th:each="a, stat : ${articlePage.content}"
+               th:if="${articlePage.number > 0 or stat.index > 4}"
+               th:href="@{'/news/' + ${a.id}}" class="list-item large">
+                
+                <div class="li-info">
+                    <div class="li-title" th:text="${a.title}"></div>
+                    <div class="li-meta">
+                        <span th:text="${a.author.username}"></span> • <span th:text="${#temporals.format(a.createdAt, 'dd/MM/yyyy')}"></span>
+                    </div>
+                </div>
+                <div class="li-thumb">
+                    <img th:src="${a.thumbnail != null ? '/uploads/news/' + a.thumbnail : '/images/news/default.jpg'}">
+                </div>
+            </a>
+
+            <div th:if="${articlePage.totalPages > 1}" class="pagination-container">
+                <ul class="pagination">
+                    <li class="page-item" th:classappend="${articlePage.first} ? 'disabled'">
+                        <a class="page-link" th:href="@{${currentTag != null ? '/news/tag/' + currentTag : '/news'}(page=${articlePage.number - 1})}"><i class="fas fa-chevron-left"></i></a>
+                    </li>
+                    
+                    <li class="page-item" th:each="i : ${#numbers.sequence(0, articlePage.totalPages - 1)}" 
+                        th:classappend="${articlePage.number == i} ? 'active'"
+                        th:if="${i >= articlePage.number - 2 and i <= articlePage.number + 2}">
+                        <a class="page-link" th:href="@{${currentTag != null ? '/news/tag/' + currentTag : '/news'}(page=${i})}" th:text="${i + 1}"></a>
+                    </li>
+                    
+                    <li class="page-item" th:classappend="${articlePage.last} ? 'disabled'">
+                        <a class="page-link" th:href="@{${currentTag != null ? '/news/tag/' + currentTag : '/news'}(page=${articlePage.number + 1})}"><i class="fas fa-chevron-right"></i></a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <th:block th:replace="~{fragments/header :: scripts}"></th:block>
+</body>
+</html>

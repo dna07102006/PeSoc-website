@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/header :: head}"></th:block>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Roboto', sans-serif !important; background-color: #000000; color: #ffffff; margin: 0; }
+        .wide-container { max-width: 1000px !important; margin: 0 auto; padding: 20px; }
+        /* --- MÀU XANH FOTMOB CHUẨN --- */
+        :root { --fm-green: #11cd76; }
+        .text-fm-green { color: var(--fm-green) !important; }
+        /* --- BANNER CARD --- */
+        .match-banner-card { background-color: #1a1a1a; border-radius: 12px; border: 1px solid #2d2d2d; overflow: hidden; margin-bottom: 20px; }
+        .match-banner-top { padding: 30px 20px 10px 20px; }
+
+        .match-tour { text-align: center; color: #bbb; font-size: 0.8rem; margin-bottom: 25px; font-weight: 500; }
+        .match-tour-link { background-color: #222; padding: 6px 16px; border-radius: 20px; border: 1px solid #333; text-decoration: none; color: #bbb; transition: 0.2s;
+            display: inline-block; cursor: pointer; }
+        .match-tour-link:hover { color: #fff; background-color: #333; }
+
+        .match-main-info { display: flex; justify-content: center; align-items: center; gap: 40px; margin-bottom: 10px; }
+
+        .player-col { display: flex; flex-direction: column; align-items: center; gap: 12px; text-decoration: none !important; width: 140px; }
+        .player-avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #333; background: #000; display: flex; align-items: center;
+            justify-content: center; overflow: hidden; }
+        .player-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .player-avatar i { font-size: 4rem; color: #444; }
+        .player-name { color: #fff; font-weight: 700; font-size: 1.2rem; text-align: center; transition: 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;
+        }
+        .player-col:hover .player-name { color: #ffc107; }
+        .score-col { text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;}
+        .score-val { font-size: 3.5rem; font-weight: 700; color: #fff; line-height: 1; margin-bottom: 8px; letter-spacing: 2px; }
+        .score-status { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
+        .score-date { color: #888; font-size: 0.75rem; }
+        /* --- TABS --- */
+        .nav-tabs-chess { border-top: 1px solid #2d2d2d; border-bottom: none; display: flex; padding: 0; background: rgba(255,255,255,0.02); margin-top: 15px; }
+        .nav-tabs-chess .nav-link { flex: 1; text-align: center; color: #aaa; border: none; padding: 15px 10px; font-weight: 600; font-size: 0.95rem;
+            border-bottom: 3px solid transparent; transition: 0.2s; border-radius: 0; background: transparent !important; cursor: pointer; }
+        .nav-tabs-chess .nav-link:hover { color: #fff; background: rgba(255,255,255,0.02) !important; }
+        .nav-tabs-chess .nav-link.active { color: #fff !important; border-bottom: 3px solid var(--fm-green) !important; background: transparent !important; }
+        /* --- TAB CONTENT --- */
+        .tab-content { background: transparent; border: none; padding: 0; }
+
+        .content-box { background: #1a1a1a; border-radius: 12px; border: 1px solid #2d2d2d; padding: 25px; height: 100%; }
+        .box-title { color: #fff; font-size: 1rem; font-weight: 700; margin-bottom: 20px; border-bottom: 1px solid #2d2d2d; padding-bottom: 15px; display: flex; align-items: center;
+            gap: 10px;}
+
+        .squad-title { text-align: center; color: #aaa; font-size: 0.9rem; font-weight: 600; margin-bottom: 20px; }
+        .squad-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #555; height: 120px; background: #222; border-radius: 8px;
+            border: 1px dashed #333; }
+        .squad-empty i { font-size: 2rem; margin-bottom: 8px; opacity: 0.5; }
+        .lineup-img { width: 100%; border-radius: 8px; border: 1px solid #333; }
+        .h2h-summary { max-width: 600px; margin: 0 auto 30px auto; }
+        .h2h-labels { display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; margin-bottom: 8px; }
+        .progress-h2h { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: #333; margin-bottom: 8px; }
+        .h2h-win { background-color: var(--fm-green); }
+        .h2h-draw { background-color: #6c757d; }
+        .h2h-loss { background-color: #dc3545; } 
+        .h2h-stats-text { display: flex; justify-content: space-between; font-size: 0.85rem; color: #aaa; }
+        /* --- MATCH ROW --- */
+        .match-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; border-bottom: 1px solid #2d2d2d; text-decoration: none !important; transition: 0.2s;
+            cursor: pointer; }
+        .match-row:hover { background: #2a2a2a; }
+        .m-date { width: 75px; font-size: 0.7rem; color: #bbb; flex-shrink: 0; }
+        .m-main-col { flex-grow: 1; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; }
+        .m-player-name { color: #fff; font-size: 0.85rem; font-weight: 500; width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none !important; }
+        .m-player-name:hover { color: #ffc107; text-decoration: none !important; }
+        .m-player-name.left { text-align: right; }
+        .m-player-name.right { text-align: left; }
+
+        .score-box { display: flex; align-items: center; flex-direction: column; gap: 2px; min-width: 110px; justify-content: center; font-weight: 700; font-size: 0.9rem; color: #fff; }
+        .score-main-row { display: flex; align-items: center; gap: 10px; }
+        
+        .avatar-container { width: 28px; height: 28px; min-width: 28px; border-radius: 50%; border: 1px solid #444; overflow: hidden; display: flex; align-items: center;
+            justify-content: center; background-color: #000; }
+        .avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .avatar-icon { font-size: 0.75rem; color: #666; }
+        .m-tour-col { width: 90px; color: #bbb; font-size: 0.65rem; text-align: right; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    </style>
+</head>
+<body>
+    <div th:replace="~{fragments/header :: navbar}"></div>
+    <div class="wide-container">
+
+        <div class="match-banner-card">
+            <div class="match-banner-top">
+                <div class="match-tour">
+                    <a th:if="${match.tournament != null}" th:href="@{'/tournament/' + ${match.tournament.id}}" class="match-tour-link">
+                        <i class="fas fa-trophy text-warning me-1"></i> [[${match.tournament.name}]]
+                    </a>
+                    <span th:if="${match.tournament == null}" class="match-tour-link" style="cursor: default;">
+                        <i class="fas fa-handshake text-info me-1"></i> Trận giao hữu
+                    </span>
+                </div>
+                <div class="match-main-info">
+                    <a th:href="@{'/profile/' + ${match.player1.username}}" class="player-col">
+                        <div class="player-avatar">
+                            <img th:if="${match.player1.avatar != null}" th:src="@{'/uploads/avatars/' + ${match.player1.avatar}}">
+                            <i th:if="${match.player1.avatar == null}" class="fas fa-user"></i>
+                        </div>
+                        <div class="player-name" th:text="${match.player1.username}"></div>
+                    </a>
+                    <div class="score-col">
+                        <div class="score-val" th:if="${match.player1Score != null}" th:text="${match.player1Score + ' - ' + match.player2Score}"></div>
+                        
+                        <div th:if="${match.player1Pen != null}" class="fw-bold text-warning mb-2" style="font-size: 1.2rem;">
+                            Pen: [[${match.player1Pen}]] - [[${match.player2Pen}]]
+                        </div>
+
+                        <div class="score-val text-info" th:if="${match.player1Score == null}" style="font-size: 2.5rem; text-transform: lowercase;">vs</div>
+
+                        <div class="score-status" th:classappend="${match.player1Score == null ? 'text-warning' : 'text-fm-green'}"
+                             th:text="${match.player1Score != null ? 'Đã kết thúc' : 'Sắp diễn ra'}"></div>
+                        <div class="score-date" th:text="${#temporals.format(match.date, 'dd/MM/yyyy')}"></div>
+                    </div>
+                    <a th:href="@{'/profile/' + ${match.player2.username}}" class="player-col">
+                        <div class="player-avatar">
+                            <img th:if="${match.player2.avatar != null}" th:src="@{'/uploads/avatars/' + ${match.player2.avatar}}">
+                            <i th:if="${match.player2.avatar == null}" class="fas fa-user"></i>
+                        </div>
+                        <div class="player-name" th:text="${match.player2.username}"></div>
+                    </a>
+                </div>
+            </div>
+            <nav class="nav nav-tabs nav-tabs-chess" role="tablist">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#lineups" type="button" role="tab">Đội hình</button>
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#h2h" type="button" role="tab">Thành tích đối đầu</button>
+            </nav>
+        </div>
+
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="lineups" role="tabpanel">
+                <div class="content-box">
+                    <div class="box-title"><i class="fas fa-users text-primary"></i> Đội hình sử dụng</div>
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="squad-title" th:text="'Đội hình của ' + ${match.player1.username}"></div>
+                            <div th:if="${p1Lineup != null}">
+                                <img th:src="@{'/uploads/lineups/' + ${p1Lineup}}" alt="Đội hình" class="lineup-img">
+                            </div>
+                            <div th:if="${p1Lineup == null}" class="squad-empty">
+                                <i class="fas fa-shield-alt"></i>
+                                <span>Trống / Tự do lựa chọn</span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="squad-title" th:text="'Đội hình của ' + ${match.player2.username}"></div>
+                            <div th:if="${p2Lineup != null}">
+                                <img th:src="@{'/uploads/lineups/' + ${p2Lineup}}" alt="Đội hình" class="lineup-img">
+                            </div>
+                            <div th:if="${p2Lineup == null}" class="squad-empty">
+                                <i class="fas fa-shield-alt"></i>
+                                <span>Trống / Tự do lựa chọn</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="h2h" role="tabpanel">
+                <div class="content-box">
+                    <div class="box-title"><i class="fas fa-history text-info"></i> Lịch sử đối đầu</div>
+
+                    <div th:with="totalH2H=${p1Wins + draws + p2Wins}">
+                        <div class="h2h-summary mt-4">
+                            <div class="h2h-labels">
+                                <span class="text-fm-green" th:text="(${totalH2H == 0 ? 0 : p1Wins * 100 / totalH2H}) + '%'"></span>
+                                <span class="text-secondary" th:text="(${totalH2H == 0 ? 0 : draws * 100 / totalH2H}) + '%'"></span>
+                                <span class="text-danger" th:text="(${totalH2H == 0 ? 0 : p2Wins * 100 / totalH2H}) + '%'"></span>
+                            </div>
+
+                            <div class="progress-h2h">
+                                <div class="h2h-win" th:style="'width:' + (${totalH2H == 0 ? 0 : p1Wins * 100.0 / totalH2H}) + '%'"></div>
+                                <div class="h2h-draw" th:style="'width:' + (${totalH2H == 0 ? 0 : draws * 100.0 / totalH2H}) + '%'"></div>
+                                <div class="h2h-loss" th:style="'width:' + (${totalH2H == 0 ? 0 : p2Wins * 100.0 / totalH2H}) + '%'"></div>
+                            </div>
+
+                            <div class="h2h-stats-text">
+                                <span th:text="${p1Wins} + ' Thắng (' + ${match.player1.username} + ')'"></span>
+                                <span th:text="${draws} + ' Hòa'"></span>
+                                <span th:text="${p2Wins} + ' Thắng (' + ${match.player2.username} + ')'"></span>
+                            </div>
+                        </div>
+
+                        <div class="mt-5">
+                            <div th:each="m : ${h2hMatches}" class="match-row" th:data-url="@{'/match-detail/' + ${m.id}}" onclick="window.location.href=this.getAttribute('data-url')">
+                                <div class="m-date" th:text="${#temporals.format(m.date, 'dd/MM/yy')}"></div>
+                                <div class="m-main-col">
+                                    <a th:href="@{'/profile/' + ${m.player1.username}}" class="m-player-name left" onclick="event.stopPropagation()" th:text="${m.player1.username}"></a>
+
+                                    <div class="score-box">
+                                        <div class="score-main-row">
+                                            <div class="avatar-container">
+                                                <img th:if="${m.player1.avatar != null}" th:src="@{'/uploads/avatars/' + ${m.player1.avatar}}" class="avatar-img">
+                                                <i th:if="${m.player1.avatar == null}" class="fas fa-user avatar-icon"></i>
+                                            </div>
+                                            <span th:if="${m.player1Score != null}" th:text="${m.player1Score + ' - ' + m.player2Score}"></span>
+                                            <span class="text-info" style="font-size: 0.8rem; text-transform: lowercase;" th:if="${m.player1Score == null}">vs</span>
+                                            <div class="avatar-container">
+                                                <img th:if="${m.player2.avatar != null}" th:src="@{'/uploads/avatars/' + ${m.player2.avatar}}" class="avatar-img">
+                                                <i th:if="${m.player2.avatar == null}" class="fas fa-user avatar-icon"></i>
+                                            </div>
+                                        </div>
+                                        
+                                        <div th:if="${m.player1Pen != null}" class="text-warning mt-1" style="font-size: 0.65rem;">
+                                            Pen: [[${m.player1Pen}]] - [[${m.player2Pen}]]
+                                        </div>
+                                    </div>
+                                    <a th:href="@{'/profile/' + ${m.player2.username}}" class="m-player-name right" onclick="event.stopPropagation()" th:text="${m.player2.username}"></a>
+                                </div>
+                                <div class="m-tour-col" th:text="${m.tournament != null ? m.tournament.name : 'Giao hữu'}"></div>
+                            </div>
+
+                            <div th:if="${#lists.isEmpty(h2hMatches)}" class="text-center text-muted italic p-4" style="background: #222; border-radius: 8px;">
+                                Hai người chơi này chưa từng gặp nhau trước đây.
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <th:block th:replace="~{fragments/header :: scripts}"></th:block>
+</body>
+</html>

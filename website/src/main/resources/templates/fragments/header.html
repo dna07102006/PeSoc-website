@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PESOC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        /* ĐẨY NỘI DUNG XUỐNG NHƯỜNG CHỖ CHO HEADER */
+        body { padding-top: 75px !important; }
+
+        /* ĐÃ FIX: Xóa position: relative; để fixed-top hoạt động */
+        .navbar-custom { background-color: #1a1a1a !important; border-bottom: 1px solid #222; padding: 15px 0; z-index: 1050; }
+        .nav-link { font-weight: 500; color: #ffffff !important; font-size: 1rem; }
+        .nav-link:hover { color: #ffc107 !important; }
+        
+        /* Ô TÌM KIẾM QUICK SEARCH */
+        .search-wrapper { position: relative; width: 280px; }
+        .search-container { 
+            background-color: rgba(255, 255, 255, 0.1); 
+            border-radius: 50px; 
+            padding: 6px 18px; 
+            display: flex; 
+            align-items: center;
+            border: 1px solid transparent;
+            transition: all 0.3s ease; 
+        }
+        
+        /* Hiệu ứng khi di chuột hoặc click vào ô tìm kiếm */
+        .search-container:hover, .search-container:focus-within {
+            background-color: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 193, 7, 0.3); 
+        }
+
+        .search-input { 
+            background: transparent !important; 
+            border: none !important; 
+            color: #ffffff !important; 
+            box-shadow: none !important; 
+            font-size: 0.9rem; 
+            width: 100%; 
+        }
+        
+        /* LÀM SÁNG CHỮ TÌM KIẾM (Placeholder) */
+        .search-input::placeholder { 
+            color: #dddddd !important; 
+            opacity: 1; 
+        }
+        
+        #search-results { 
+            position: absolute; top: 115%; left: 0; width: 100%; background-color: #1e1e1e; 
+            border: 1px solid #333; border-radius: 12px; display: none; z-index: 9999; 
+            overflow: hidden;
+        }
+        .result-group { border-bottom: 1px solid #222; padding: 5px 0; }
+        .result-group:last-child { border-bottom: none; } 
+        .result-title { font-size: 0.65rem; color: #ffc107; font-weight: 800; padding: 8px 15px 2px; text-transform: uppercase; }
+        .result-item { display: flex; align-items: center; padding: 10px 15px; color: #fff; text-decoration: none !important; }
+        .result-item:hover { background-color: #252525; color: #ffc107 !important; }
+
+        /* AUTH SECTION */
+        .auth-wrapper { display: flex; align-items: center; border-left: 1px solid rgba(255, 255, 255, 0.15); padding-left: 20px; margin-left: 15px; }
+        .btn-logout { color: #888 !important; text-decoration: none; font-size: 0.8rem; margin-left: 15px; transition: 0.3s; }
+        .btn-logout:hover { color: #dc3545 !important; }
+    </style>
+</head>
+<body>
+    <div th:fragment="navbar">
+        <nav class="navbar navbar-expand-lg navbar-dark navbar-custom fixed-top">
+            <div class="container">
+                <a class="navbar-brand fw-bold fs-3" th:href="@{/home}">PESOC</a>
+                
+                <div class="collapse navbar-collapse">
+                    <div class="search-wrapper ms-4">
+                        <div class="search-container">
+                            <i class="fas fa-search text-secondary"></i>
+                            <input class="form-control search-input" type="text" id="quick-search" placeholder="Tìm kiếm tài khoản, giải đấu, #hashtag..." autocomplete="off">
+                        </div>
+                        <div id="search-results"></div>
+                    </div>
+                    
+                    <ul class="navbar-nav mx-auto gap-2">
+                        <li class="nav-item"><a class="nav-link" th:href="@{/elo-board}">BXH Elo</a></li>
+                        <li class="nav-item"><a class="nav-link" th:href="@{/upcoming-matches}">Lịch thi đấu</a></li>
+                        <li class="nav-item"><a class="nav-link" th:href="@{/tournaments}">Giải đấu</a></li>
+                        <li class="nav-item"><a class="nav-link" th:href="@{/news}">Tin tức</a></li>
+                        <li class="nav-item"><a class="nav-link" th:href="@{/about-us}">Về chúng tôi</a></li>
+                    </ul>
+                    
+                    <div class="auth-wrapper">
+                        <th:block th:if="${session.logInUser == null}">
+                            <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" 
+                                    style="font-size: 0.85rem;" data-bs-toggle="modal" data-bs-target="#loginModal">
+                                Đăng nhập
+                            </button>
+                        </th:block>
+
+                        <th:block th:if="${session.logInUser != null}">
+                            <a th:if="${session.logInUser.role == 'ADMIN'}" th:href="@{/admin}" 
+                               class="btn btn-danger btn-sm rounded-pill px-3 fw-bold me-3">QUẢN TRỊ</a>
+                            
+                            <a th:href="@{'/profile/' + ${session.logInUser.username}}" class="d-flex align-items-center text-white fw-bold text-decoration-none">
+                                
+                                <img th:if="${session.logInUser.avatar != null}" 
+                                     th:src="@{'/uploads/avatars/' + ${session.logInUser.avatar}}" 
+                                     class="rounded-circle me-2 shadow-sm" 
+                                     style="width: 35px; height: 35px; object-fit: cover; border: 1px solid #444;" 
+                                     alt="Avatar">
+                                     
+                                <div th:if="${session.logInUser.avatar == null}" 
+                                     class="rounded-circle me-2 d-flex align-items-center justify-content-center shadow-sm" 
+                                     style="width: 35px; height: 35px; background-color: #000; border: 1px solid #444;">
+                                     <i class="fas fa-user text-secondary" style="font-size: 0.9rem;"></i>
+                                </div>
+
+                                <span th:text="${session.logInUser.username}"></span>
+                            </a>
+
+                            <a th:href="@{/logout}" class="btn-logout" title="Đăng xuất">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </a>
+                        </th:block>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content" style="background-color: #1a1a1a; border: 1px solid #333; border-radius: 16px;">
+                    <div class="modal-header border-0 pb-0">
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4 pt-0 text-center">
+                        <h4 class="fw-bold text-white mb-4">Đăng nhập</h4>
+                        <form th:action="@{/login}" method="post" class="text-start">
+                            <div class="mb-3">
+                                <label class="form-label text-secondary small fw-bold">TÊN ĐĂNG NHẬP</label>
+                                <input type="text" name="username" class="form-control" style="background-color: #000; border: 1px solid #333; color: #fff;" required>
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label text-secondary small fw-bold">MẬT KHẨU</label>
+                                <input type="password" name="password" class="form-control" style="background-color: #000; border: 1px solid #333; color: #fff;" required>
+                            </div>
+                            <button type="submit" class="btn btn-warning w-100 fw-bold py-2 rounded-pill">ĐĂNG NHẬP</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const searchInput = document.getElementById('quick-search');
+            const resultsBox = document.getElementById('search-results');
+
+            document.addEventListener('click', function(e) {
+                if (!searchInput.contains(e.target) && !resultsBox.contains(e.target)) {
+                    resultsBox.style.display = 'none';
+                }
+            });
+
+            searchInput.addEventListener('input', function() {
+                let keyword = this.value.trim().replace('#', '');
+                
+                if (keyword.length < 1) { 
+                    resultsBox.style.display = 'none'; 
+                    return; 
+                }
+
+                fetch(`/api/search?keyword=${encodeURIComponent(keyword)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        let html = '';
+                        let hasData = false;
+
+                        if (data.tags && data.tags.length > 0) {
+                            hasData = true;
+                            html += '<div class="result-group"><div class="result-title text-info">Chủ đề (Hashtag)</div>';
+                            data.tags.forEach(t => {
+                                let tagName = typeof t === 'string' ? t : t.name;
+                                html += `<a href="/news/tag/${tagName}" class="result-item">
+                                            <i class="fas fa-hashtag text-info me-2"></i> ${tagName}
+                                        </a>`;
+                            });
+                            html += '</div>';
+                        }
+
+                        if (data.users && data.users.length > 0) {
+                            hasData = true;
+                            html += '<div class="result-group"><div class="result-title">Người chơi</div>';
+                            data.users.forEach(u => {
+                                html += `<a href="/profile/${u.username}" class="result-item">
+                                            <i class="fas fa-user me-2 text-secondary"></i> ${u.username}
+                                        </a>`;
+                            });
+                            html += '</div>';
+                        }
+
+                        if (data.tournaments && data.tournaments.length > 0) {
+                            hasData = true;
+                            html += '<div class="result-group"><div class="result-title">Giải đấu</div>';
+                            data.tournaments.forEach(t => {
+                                html += `<a href="/tournament-detail/${t.name}" class="result-item">
+                                            <i class="fas fa-trophy me-2 text-warning"></i> ${t.name}
+                                        </a>`;
+                            });
+                            html += '</div>';
+                        }
+
+                        if (hasData) {
+                            resultsBox.innerHTML = html;
+                            resultsBox.style.display = 'block';
+                        } else {
+                            resultsBox.innerHTML = '<div class="p-3 text-secondary small text-center"><i class="fas fa-search me-2"></i>Không tìm thấy kết quả...</div>';
+                            resultsBox.style.display = 'block';
+                        }
+                    })
+                    .catch(err => console.error("Search error:", err));
+            });
+        </script>
+    </div>
+
+    <div th:fragment="scripts">
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    </div>
+</body>
+</html>
