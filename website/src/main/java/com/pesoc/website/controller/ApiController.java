@@ -13,16 +13,11 @@ import com.pesoc.website.repository.ArticleRepository;
 import java.nio.file.*;
 import java.util.*;
 
-
 @RestController
 @RequestMapping("/api")
 public class ApiController {
     @Autowired private UserRepository userRepository;
     @Autowired private ArticleRepository articleRepository;
-
-    ApiController(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
 
     @PostMapping("/image/upload")
     public Map<String, Object> uploadImageForCKEditor(@RequestParam("upload") MultipartFile file) {

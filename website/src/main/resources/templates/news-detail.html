@@ -279,6 +279,36 @@
     <th:block th:replace="~{fragments/header :: scripts}"></th:block>
     
     <script>
+        // ĐOẠN CODE PHÉP THUẬT BIẾN OEMBED THÀNH VIDEO YOUTUBE
+        document.addEventListener("DOMContentLoaded", function() {
+            // Tìm tất cả các thẻ oembed do CKEditor tạo ra
+            const oembeds = document.querySelectorAll('oembed[url]');
+            
+            oembeds.forEach(function(oembed) {
+                const url = oembed.getAttribute('url');
+                let videoId = '';
+                
+                // Dùng Regex để tách lấy cái mã ID của YouTube (ví dụ: dQw4w9WgXcQ)
+                const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
+                
+                if (ytMatch && ytMatch[1]) {
+                    videoId = ytMatch[1];
+                    
+                    // Tạo ra thẻ iframe xịn xò
+                    const iframe = document.createElement('iframe');
+                    iframe.src = 'https://www.youtube.com/embed/' + videoId;
+                    iframe.width = '100%';
+                    iframe.style.aspectRatio = '16/9';
+                    iframe.style.border = 'none';
+                    iframe.style.borderRadius = '8px';
+                    iframe.allowFullscreen = true;
+                    
+                    // Thay thế cục oembed vô dụng bằng iframe mới tạo
+                    oembed.parentNode.replaceChild(iframe, oembed);
+                }
+            });
+        });
+        
         function toggleReplyForm(commentId) {
             var formWrapper = document.getElementById('reply-form-' + commentId);
             if (formWrapper) {
