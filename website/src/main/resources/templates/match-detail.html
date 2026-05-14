@@ -89,6 +89,13 @@
                     <a th:if="${match.tournament != null}" th:href="@{/tournament-detail/{name}(name=${match.tournament.name})}" class="match-tour-link">
                         <i class="fas fa-trophy text-warning me-1"></i> [[${match.tournament.name}]]
                     </a>
+                    
+                    <div th:if="${match.tournament != null and match.phaseName != null}" 
+                        class="mt-2 text-white fw-bold text-uppercase" 
+                        style="font-size: 0.85rem; letter-spacing: 0.5px;">
+                        [[${match.phaseName}]]
+                    </div>
+
                     <span th:if="${match.tournament == null}" class="match-tour-link" style="cursor: default;">
                         <i class="fas fa-handshake text-info me-1"></i> Trận giao hữu
                     </span>

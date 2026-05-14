@@ -31,4 +31,13 @@ public class TournamentRanking {
     private Integer finalRank;
 
     private String lineupImage;
+
+    @Column(columnDefinition = "boolean default false")
+    private boolean topScorer = false;
+
+    @Column(columnDefinition = "boolean default false")
+    private boolean goldenGlove = false;
+
+    @Column(columnDefinition = "boolean default false")
+    private boolean mostConceded = false;
 }

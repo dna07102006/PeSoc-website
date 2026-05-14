@@ -5,7 +5,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -13,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.pesoc.website.model.Match;
+import com.pesoc.website.model.PlayerStatDTO;
 import com.pesoc.website.model.Tournament;
 import com.pesoc.website.model.TournamentRanking;
 import com.pesoc.website.model.User;
@@ -131,6 +136,8 @@ public class TournamentDetailService {
             throw new RuntimeException("Giải đấu đã kết thúc!");
         }
 
+        updateDynamicTitles(tournament);
+        
         tournament.setFinishDate(LocalDateTime.now());
         tournament.setOpening(false);
         tournamentRepository.save(tournament);
@@ -179,5 +186,73 @@ public class TournamentDetailService {
         // 5. Cập nhật tên file vào DB
         ranking.setLineupImage(filename);
         rankingRepository.save(ranking);
+    }
+
+    // 1. TRẠM TRUNG CHUYỂN: Hàm quét DB chỉ 1 lần duy nhất
+    private Map<Long, PlayerStatDTO> calculateRawStats(Tournament tournament) {
+        List<Match> matches = matchRepository.findByTournament(tournament);
+        Map<Long, PlayerStatDTO> statsMap = new HashMap<>();
+
+        for (Match m : matches) {
+            if (m.isUpcoming()) continue;
+
+            if (m.getPlayer1() != null) {
+                PlayerStatDTO s1 = statsMap.computeIfAbsent(m.getPlayer1().getId(), k -> new PlayerStatDTO(m.getPlayer1()));
+                s1.setGoals(s1.getGoals() + m.getPlayer1Score());
+                s1.setConceded(s1.getConceded() + m.getPlayer2Score());
+                if (m.getPlayer2Score() == 0) s1.setCleanSheets(s1.getCleanSheets() + 1);
+            }
+
+            if (m.getPlayer2() != null) {
+                PlayerStatDTO s2 = statsMap.computeIfAbsent(m.getPlayer2().getId(), k -> new PlayerStatDTO(m.getPlayer2()));
+                s2.setGoals(s2.getGoals() + m.getPlayer2Score());
+                s2.setConceded(s2.getConceded() + m.getPlayer1Score());
+                if (m.getPlayer1Score() == 0) s2.setCleanSheets(s2.getCleanSheets() + 1);
+            }
+        }
+        return statsMap;
+    }
+
+    // 2. HÀM CHỌC VÀO DB (Ghi đè cờ Danh hiệu)
+    @Transactional
+    public void updateDynamicTitles(Tournament tournament) {
+        Map<Long, PlayerStatDTO> statsMap = calculateRawStats(tournament);
+
+        int maxG = statsMap.values().stream().mapToInt(PlayerStatDTO::getGoals).max().orElse(0);
+        int maxCS = statsMap.values().stream().mapToInt(PlayerStatDTO::getCleanSheets).max().orElse(0);
+        int maxC = statsMap.values().stream().mapToInt(PlayerStatDTO::getConceded).max().orElse(0);
+
+        List<TournamentRanking> rankings = rankingRepository.findByTournamentOrderByPointsDescDifferenceDescGoalsDesc(tournament);
+        for (TournamentRanking r : rankings) {
+            r.setTopScorer(false);
+            r.setGoldenGlove(false);
+            r.setMostConceded(false);
+
+            if (r.getUser() != null && statsMap.containsKey(r.getUser().getId())) {
+                PlayerStatDTO s = statsMap.get(r.getUser().getId());
+                if (maxG > 0 && s.getGoals() == maxG) r.setTopScorer(true);
+                if (maxCS > 0 && s.getCleanSheets() == maxCS) r.setGoldenGlove(true);
+                if (maxC > 0 && s.getConceded() == maxC) r.setMostConceded(true);
+            }
+        }
+        rankingRepository.saveAll(rankings);
+    }
+
+    // 3. HÀM ĐẨY RA GIAO DIỆN (Lấy Top 5)
+    public Map<String, List<PlayerStatDTO>> getTop5Stats(Tournament tournament) {
+        Map<Long, PlayerStatDTO> statsMap = calculateRawStats(tournament);
+        List<PlayerStatDTO> all = new java.util.ArrayList<>(statsMap.values());
+        Map<String, List<PlayerStatDTO>> res = new HashMap<>();
+        
+        res.put("topScorers", all.stream().filter(s -> s.getGoals() > 0)
+                .sorted(java.util.Comparator.comparingInt(PlayerStatDTO::getGoals).reversed()).limit(5).collect(Collectors.toList()));
+
+        res.put("topCleanSheets", all.stream().filter(s -> s.getCleanSheets() > 0)
+                .sorted(java.util.Comparator.comparingInt(PlayerStatDTO::getCleanSheets).reversed()).limit(5).collect(Collectors.toList()));
+
+        res.put("topConceded", all.stream().filter(s -> s.getConceded() > 0)
+                .sorted(java.util.Comparator.comparingInt(PlayerStatDTO::getConceded).reversed()).limit(5).collect(Collectors.toList()));
+
+        return res;
     }
 }

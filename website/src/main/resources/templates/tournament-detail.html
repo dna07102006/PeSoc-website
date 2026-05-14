@@ -131,11 +131,12 @@
             <div class="admin-panel-title"><i class="fas fa-shield-alt"></i> Bảng điều khiển quản trị viên</div>
             <div class="admin-grid">
                 <button class="btn-admin-uniform" data-bs-toggle="modal" data-bs-target="#bannerModal"><i class="fas fa-image me-1"></i> Đổi Banner</button>
-                <button th:if="${tournament.tournamentType != 'KNOCKOUT'}" class="btn-admin-uniform" data-bs-toggle="modal" data-bs-target="#addPlayerModal"><i class="fas fa-users-cog me-1"></i> Xếp Bảng Người Chơi</button>
-                <button class="btn-admin-uniform" data-bs-toggle="modal" data-bs-target="#addMatchModal"><i class="fas fa-calendar-plus me-1"></i> Xếp Lịch Thi Đấu</button>
+                <button th:if="${tournament.tournamentType != 'KNOCKOUT' && tournament.opening}" class="btn-admin-uniform" data-bs-toggle="modal" data-bs-target="#addPlayerModal"><i class="fas fa-users-cog me-1"></i> Xếp Bảng Người Chơi</button>
+                <button th:if="${tournament.opening}" class="btn-admin-uniform" data-bs-toggle="modal" data-bs-target="#addMatchModal"><i class="fas fa-calendar-plus me-1"></i> Xếp Lịch Thi Đấu</button>
                 <button class="btn-admin-uniform" data-bs-toggle="modal" data-bs-target="#uploadLineupModal"><i class="fas fa-tshirt me-1"></i> Cập Nhật Đội Hình</button>
                 <button th:if="${!tournament.opening}" class="btn-admin-uniform" data-bs-toggle="modal" data-bs-target="#updateRankModal"><i class="fas fa-medal me-1"></i> Chốt Hạng Nhận Giải</button>
                 <button th:if="${tournament.opening}" class="btn-admin-danger" data-bs-toggle="modal" data-bs-target="#endTourModal"><i class="fas fa-flag-checkered me-1"></i> Bế Mạc Giải</button>
+                <button class="btn-admin-uniform" data-bs-toggle="modal" data-bs-target="#syncTitlesModal"><i class="fas fa-sync-alt me-1"></i> Đồng Bộ Danh Hiệu</button>
             </div>
         </div>
 
@@ -192,6 +193,9 @@
             <nav class="nav nav-tabs nav-tabs-chess" id="tourTabs" role="tablist">
                 <button th:if="${tournament.tournamentType != 'KNOCKOUT'}" class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-ranking" type="button">Bảng xếp hạng</button>
                 <button class="nav-link" th:classappend="${tournament.tournamentType == 'KNOCKOUT' ? 'active' : ''}" data-bs-toggle="tab" data-bs-target="#tab-matches" type="button">Lịch thi đấu & Kết quả</button>
+                
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-stats" type="button">Thống kê</button>
+                
                 <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-players" type="button">Thành viên</button>
             </nav>
         </div>
@@ -263,31 +267,13 @@
                 <div class="info-box">
                     <div class="info-title"><i class="fas fa-futbol text-success"></i> Các trận đấu</div>
                     
-                    <th:block th:if="${matchesByRound != null and not #maps.isEmpty(matchesByRound)}">
-                        <div th:each="entry : ${matchesByRound}">
-                            <div class="phase-header text-fm-green">Vòng <span th:text="${entry.key}"></span> (Vòng Bảng)</div>
-                            <div th:each="m : ${entry.value}" class="match-row" th:data-url="@{'/match-detail/' + ${m.id}}" onclick="window.location.href=this.getAttribute('data-url')">
-                                <div class="m-date" th:text="${m.date != null ? #temporals.format(m.date, 'dd/MM HH:mm') : 'Chưa xếp lịch'}"></div>
-                                <div class="m-main-col">
-                                    <a th:href="@{'/profile/' + ${m.player1.username}}" class="m-player-name left" onclick="event.stopPropagation()" th:text="${m.player1.username}"></a>
-                                    <div class="score-box">
-                                        <div class="score-main-row">
-                                            <div class="m-avatar"><img th:if="${m.player1.avatar != null}" th:src="@{'/uploads/avatars/' + ${m.player1.avatar}}"><i th:if="${m.player1.avatar == null}" class="fas fa-user"></i></div>
-                                            <span th:if="${m.upcoming}" class="text-info" style="font-size: 0.8rem; text-transform: lowercase;">vs</span>
-                                            <span th:if="${!m.upcoming}" th:text="${m.player1Score + ' - ' + m.player2Score}"></span>
-                                            <div class="m-avatar"><img th:if="${m.player2.avatar != null}" th:src="@{'/uploads/avatars/' + ${m.player2.avatar}}"><i th:if="${m.player2.avatar == null}" class="fas fa-user"></i></div>
-                                        </div>
-                                    </div>
-                                    <a th:href="@{'/profile/' + ${m.player2.username}}" class="m-player-name right" onclick="event.stopPropagation()" th:text="${m.player2.username}"></a>
-                                </div>
-                            </div>
-                        </div>
-                    </th:block>
-
                     <th:block th:if="${knockoutMatches != null and not #maps.isEmpty(knockoutMatches)}">
                         <div th:each="entry : ${knockoutMatches}">
                             <div class="phase-header text-warning"><i class="fas fa-trophy me-2"></i><span th:text="${entry.key}"></span></div>
-                            <div th:each="m : ${entry.value}" class="match-row" th:data-url="@{'/match-detail/' + ${m.id}}" onclick="window.location.href=this.getAttribute('data-url')">
+                            <div th:each="m : ${entry.value}" class="match-row" 
+                            th:classappend="${m.upcoming ? 'is-upcoming' : ''}"
+                            th:data-url="@{'/match-detail/' + ${m.id}}" 
+                            onclick="window.location.href=this.getAttribute('data-url')">
                                 <div class="m-date" th:text="${m.date != null ? #temporals.format(m.date, 'dd/MM HH:mm') : 'Chưa xếp lịch'}"></div>
                                 <div class="m-main-col">
                                     <a th:href="@{'/profile/' + ${m.player1.username}}" class="m-player-name left" onclick="event.stopPropagation()" th:text="${m.player1.username}"></a>
@@ -308,12 +294,109 @@
                         </div>
                     </th:block>
 
+                    <th:block th:if="${matchesByRound != null and not #maps.isEmpty(matchesByRound)}">
+                        <div th:each="entry : ${matchesByRound}">
+                            <div class="phase-header text-fm-green">Vòng <span th:text="${entry.key}"></span> (Vòng Bảng)</div>
+                            <div th:each="m : ${entry.value}" class="match-row" 
+                            th:classappend="${m.upcoming ? 'is-upcoming' : ''}"
+                            th:data-url="@{'/match-detail/' + ${m.id}}" 
+                            onclick="window.location.href=this.getAttribute('data-url')">
+                                <div class="m-date" th:text="${m.date != null ? #temporals.format(m.date, 'dd/MM HH:mm') : 'Chưa xếp lịch'}"></div>
+                                <div class="m-main-col">
+                                    <a th:href="@{'/profile/' + ${m.player1.username}}" class="m-player-name left" onclick="event.stopPropagation()" th:text="${m.player1.username}"></a>
+                                    <div class="score-box">
+                                        <div class="score-main-row">
+                                            <div class="m-avatar"><img th:if="${m.player1.avatar != null}" th:src="@{'/uploads/avatars/' + ${m.player1.avatar}}"><i th:if="${m.player1.avatar == null}" class="fas fa-user"></i></div>
+                                            <span th:if="${m.upcoming}" class="text-info" style="font-size: 0.8rem; text-transform: lowercase;">vs</span>
+                                            <span th:if="${!m.upcoming}" th:text="${m.player1Score + ' - ' + m.player2Score}"></span>
+                                            <div class="m-avatar"><img th:if="${m.player2.avatar != null}" th:src="@{'/uploads/avatars/' + ${m.player2.avatar}}"><i th:if="${m.player2.avatar == null}" class="fas fa-user"></i></div>
+                                        </div>
+                                    </div>
+                                    <a th:href="@{'/profile/' + ${m.player2.username}}" class="m-player-name right" onclick="event.stopPropagation()" th:text="${m.player2.username}"></a>
+                                </div>
+                            </div>
+                        </div>
+                    </th:block>
+
                     <div th:if="${(matchesByRound == null or #maps.isEmpty(matchesByRound)) and (knockoutMatches == null or #maps.isEmpty(knockoutMatches))}" class="empty-state">
                         Chưa có lịch thi đấu nào.
                     </div>
                 </div>
             </div>
 
+            <div class="tab-pane fade" id="tab-stats" role="tabpanel">
+                <div class="row g-4">
+                    <div class="col-lg-4 col-md-6">
+                        <div class="info-box h-100 mb-0">
+                            <div class="info-title"><i class="fas fa-futbol text-warning me-2"></i>Vua Phá Lưới</div>
+                            <div class="d-flex flex-column">
+                                <div th:each="stat, iter : ${topScorers}" class="match-row w-100 px-3 py-2" th:data-url="@{'/profile/' + ${stat.user.username}}" onclick="window.location.href=this.getAttribute('data-url')">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="fw-bold fs-6" style="width: 20px; text-align: center;" 
+                                            th:classappend="${iter.index == 0 ? 'rank-1' : (iter.index == 1 ? 'rank-2' : (iter.index == 2 ? 'rank-3' : 'text-muted'))}">
+                                            [[${iter.count}]]
+                                        </div>
+                                        <div class="p-avatar" style="width: 32px; height: 32px;">
+                                            <img th:if="${stat.user.avatar != null}" th:src="@{'/uploads/avatars/' + ${stat.user.avatar}}">
+                                            <i th:if="${stat.user.avatar == null}" class="fas fa-user text-secondary" style="font-size: 0.9rem;"></i>
+                                        </div>
+                                        <span class="text-white fw-bold" th:text="${stat.user.username}"></span>
+                                    </div>
+                                    <span class="text-warning fw-bold fs-5" th:text="${stat.goals}"></span>
+                                </div>
+                                <div th:if="${#lists.isEmpty(topScorers)}" class="empty-state py-4">Chưa có ai ghi bàn</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4 col-md-6">
+                        <div class="info-box h-100 mb-0">
+                            <div class="info-title"><i class="fas fa-mitten text-info me-2"></i>Găng Tay Vàng</div>
+                            <div class="d-flex flex-column">
+                                <div th:each="stat, iter : ${topCleanSheets}" class="match-row w-100 px-3 py-2" th:data-url="@{'/profile/' + ${stat.user.username}}" onclick="window.location.href=this.getAttribute('data-url')">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="fw-bold fs-6" style="width: 20px; text-align: center;" 
+                                            th:classappend="${iter.index == 0 ? 'rank-1' : (iter.index == 1 ? 'rank-2' : (iter.index == 2 ? 'rank-3' : 'text-muted'))}">
+                                            [[${iter.count}]]
+                                        </div>
+                                        <div class="p-avatar" style="width: 32px; height: 32px;">
+                                            <img th:if="${stat.user.avatar != null}" th:src="@{'/uploads/avatars/' + ${stat.user.avatar}}">
+                                            <i th:if="${stat.user.avatar == null}" class="fas fa-user text-secondary" style="font-size: 0.9rem;"></i>
+                                        </div>
+                                        <span class="text-white fw-bold" th:text="${stat.user.username}"></span>
+                                    </div>
+                                    <span class="text-info fw-bold fs-5" th:text="${stat.cleanSheets}"></span>
+                                </div>
+                                <div th:if="${#lists.isEmpty(topCleanSheets)}" class="empty-state py-4">Chưa có ai giữ sạch lưới</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4 col-md-6">
+                        <div class="info-box h-100 mb-0">
+                            <div class="info-title"><i class="fas fa-dizzy text-danger me-2"></i>Vua Thủng Lưới</div>
+                            <div class="d-flex flex-column">
+                                <div th:each="stat, iter : ${topConceded}" class="match-row w-100 px-3 py-2" th:data-url="@{'/profile/' + ${stat.user.username}}" onclick="window.location.href=this.getAttribute('data-url')">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="fw-bold fs-6" style="width: 20px; text-align: center;" 
+                                            th:classappend="${iter.index == 0 ? 'rank-1' : (iter.index == 1 ? 'rank-2' : (iter.index == 2 ? 'rank-3' : 'text-muted'))}">
+                                            [[${iter.count}]]
+                                        </div>
+                                        <div class="p-avatar" style="width: 32px; height: 32px;">
+                                            <img th:if="${stat.user.avatar != null}" th:src="@{'/uploads/avatars/' + ${stat.user.avatar}}">
+                                            <i th:if="${stat.user.avatar == null}" class="fas fa-user text-secondary" style="font-size: 0.9rem;"></i>
+                                        </div>
+                                        <span class="text-white fw-bold" th:text="${stat.user.username}"></span>
+                                    </div>
+                                    <span class="text-danger fw-bold fs-5" th:text="${stat.conceded}"></span>
+                                </div>
+                                <div th:if="${#lists.isEmpty(topConceded)}" class="empty-state py-4">Chưa có ai thủng lưới</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <div class="tab-pane fade" id="tab-players" role="tabpanel">
                 <div class="row g-4">
                     <div class="col-md-6">
@@ -540,27 +623,88 @@
 
         <div class="modal fade td-modal" id="endTourModal">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-danger">
+                <div class="modal-content">
                     <form th:action="@{|/admin/tournament-detail/${tournament.name}/end-tournament|}" method="post">
-                        <div class="modal-header border-0 pb-0">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Kết thúc giải đấu</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
-                        <div class="modal-body text-center pt-0">
+                        
+                        <div class="modal-body text-center p-4">
                             <i class="fas fa-exclamation-triangle text-danger mb-3" style="font-size: 3rem;"></i>
                             <h5 class="text-white fw-bold">Xác nhận Bế Mạc Giải?</h5>
-                            <p class="text-muted small">Hành động này sẽ khóa trạng thái giải đấu về <b>"Đã kết thúc"</b> và cập nhật lên hệ thống.</p>
+                            <p class="text-light small mb-0" style="opacity: 0.85;">Hành động này sẽ khóa trạng thái giải đấu về <b>"Đã kết thúc"</b> và cập nhật lên hệ thống.</p>
                         </div>
+                        
                         <div class="modal-footer border-0">
-                            <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Hủy</button>
-                            <button type="submit" class="btn btn-danger fw-bold">CHỐT KẾT THÚC GIẢI</button>
+                            <button type="submit" class="btn btn-danger btn-submit">CHỐT KẾT THÚC GIẢI</button>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
 
+        <div class="modal fade td-modal" id="syncTitlesModal">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form th:action="@{|/admin/tournament-detail/${tournament.name}/sync-titles|}" method="post">
+                        <div class="modal-header">
+                            <h5 class="modal-title text-info">Đồng bộ Danh hiệu</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        
+                        <div class="modal-body text-center p-4">
+                            <i class="fas fa-sync-alt text-info mb-3" style="font-size: 3rem;"></i>
+                            <h5 class="text-white fw-bold">Cập nhật lại?</h5>
+                            <p class="text-light small mb-0" style="opacity: 0.85;">Hệ thống sẽ quét lại toàn bộ trận đấu của giải này và trao lại các danh hiệu <b>Vua phá lưới, Găng tay vàng, Vua thủng lưới</b> một cách chính xác nhất.</p>
+                        </div>
+                        
+                        <div class="modal-footer border-0">
+                            <button type="submit" class="btn btn-info btn-submit text-dark fw-bold">BẮT ĐẦU ĐỒNG BỘ</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </th:block>
 
     <th:block th:replace="~{fragments/header :: scripts}"></th:block>
+
+    <script>
+        function scrollToNextMatch() {
+            // 1. Tìm TẤT CẢ các trận chưa đá trên màn hình
+            const upcomingMatches = document.querySelectorAll('.is-upcoming');
+            
+            // 2. Nếu có trận chưa đá
+            if (upcomingMatches.length > 0) {
+                // Lấy trận CHƯA ĐÁ NẰM Ở DƯỚI CÙNG (vì danh sách đang bị lật ngược)
+                const nextMatch = upcomingMatches[upcomingMatches.length - 1];
+                
+                // Hiệu ứng cuộn mượt mà, đặt trận đấu vào giữa màn hình
+                nextMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Làm lóe sáng nhẹ trận đấu để gây chú ý
+                nextMatch.style.transition = "background-color 0.5s";
+                nextMatch.style.backgroundColor = "rgba(17, 205, 118, 0.2)"; // Màu xanh PeSoc
+                setTimeout(() => {
+                    nextMatch.style.backgroundColor = "";
+                }, 1500);
+            }
+        }
+
+        // 1. Chạy khi người dùng BẤM SANG tab Lịch thi đấu (dành cho Vòng Bảng)
+        const matchesTabBtn = document.querySelector('button[data-bs-target="#tab-matches"]');
+        if(matchesTabBtn) {
+            matchesTabBtn.addEventListener('shown.bs.tab', scrollToNextMatch);
+        }
+
+        // 2. Chạy ngay khi VỪA LOAD TRANG (dành cho trường hợp giải Knockout mà tab này được active mặc định)
+        document.addEventListener("DOMContentLoaded", function() {
+            const matchesTabPane = document.getElementById('tab-matches');
+            if(matchesTabPane && matchesTabPane.classList.contains('active')) {
+                setTimeout(scrollToNextMatch, 300); // Chờ 0.3s cho UI render xong rồi mới cuộn
+            }
+        });
+    </script>
 </body>
 </html>

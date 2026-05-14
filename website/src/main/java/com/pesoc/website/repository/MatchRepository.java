@@ -38,4 +38,6 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
 
     Page<Match> findByUpcomingOrderByDateDesc(boolean upcoming, Pageable pageable);
     Page<Match> findByUpcomingOrderByIdAsc(boolean upcoming, Pageable pageable);
+
+    List<Match> findByTournament(Tournament tournament);
 }

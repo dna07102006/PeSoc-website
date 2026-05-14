@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.pesoc.website.model.Match;
+import com.pesoc.website.model.PlayerStatDTO;
 import com.pesoc.website.model.Tournament;
 import com.pesoc.website.model.TournamentRanking;
 import com.pesoc.website.model.User;
@@ -68,20 +69,43 @@ public class TournamentDetailController {
             model.addAttribute("registeredUsers", registeredUsers);
 
             List<Match> leagueMatches = matchRepository.findByTournamentAndMatchTypeOrderByRoundNumberAscDateDesc(tournament, "GROUP");
-            Map<Integer, List<Match>> matchesByRound = leagueMatches.stream().collect(Collectors.groupingBy(Match::getRoundNumber, LinkedHashMap::new, Collectors.toList()));
+            
+            // 🌟 ĐÃ SỬA: Dùng TreeMap với Collections.reverseOrder() để lật ngược thứ tự Vòng Bảng (VD: Vòng 3 -> Vòng 2 -> Vòng 1)
+            Map<Integer, List<Match>> matchesByRound = leagueMatches.stream()
+                .collect(Collectors.groupingBy(
+                    Match::getRoundNumber, 
+                    () -> new java.util.TreeMap<>(java.util.Collections.reverseOrder()), 
+                    Collectors.toList()
+                ));
             
             model.addAttribute("matchesByRound", matchesByRound);
         }
 
         if("KNOCKOUT".equals(type) || "MIXED".equals(type)){
             List<Match> knockoutMatches = matchRepository.findByTournamentAndMatchTypeOrderByRoundNumberAscDateDesc(tournament, "KNOCKOUT");
-            Map<String, List<Match>> matchesByPhase = knockoutMatches.stream()
+            
+            // Bước 1: Vẫn lấy ra thứ tự gốc (VD: Tứ Kết -> Bán Kết -> Chung Kết)
+            Map<String, List<Match>> tempMatchesByPhase = knockoutMatches.stream()
                 .collect(Collectors.groupingBy(Match::getPhaseName, LinkedHashMap::new, Collectors.toList()));
             
-                model.addAttribute("knockoutMatches", matchesByPhase);
+            // 🌟 ĐÃ SỬA: Bước 2 - Lật ngược thủ công để biến thành (Chung Kết -> Bán Kết -> Tứ Kết)
+            Map<String, List<Match>> matchesByPhase = new LinkedHashMap<>();
+            java.util.List<String> keys = new java.util.ArrayList<>(tempMatchesByPhase.keySet());
+            java.util.Collections.reverse(keys); // Lật ngược danh sách Key
+            for (String key : keys) {
+                matchesByPhase.put(key, tempMatchesByPhase.get(key));
+            }
+            
+            model.addAttribute("knockoutMatches", matchesByPhase);
         }
 
-        return "tournament-detail";
+        // --- THÊM PHẦN LẤY THỐNG KÊ TOP 5 ---
+        Map<String, List<PlayerStatDTO>> topStats = tournamentDetailService.getTop5Stats(tournament);
+        model.addAttribute("topScorers", topStats.get("topScorers"));
+        model.addAttribute("topCleanSheets", topStats.get("topCleanSheets"));
+        model.addAttribute("topConceded", topStats.get("topConceded"));
+        
+        return "tournament-detail"; // Dòng cũ của sếp
     }
     
     @PostMapping("/admin/tournament-detail/{name}/add-match")
@@ -205,5 +229,25 @@ public class TournamentDetailController {
         // 4. Load lại trang chi tiết giải đấu (Nhớ dùng RedirectAttributes để tránh lỗi font chữ)
         redirectAttributes.addAttribute("tourName", tournament.getName());
         return "redirect:/tournament-detail/{tourName}"; // Điều chỉnh lại link return theo đúng route của b
+    }
+
+    @PostMapping("/admin/tournament-detail/{name}/sync-titles")
+    public String syncTitles(@PathVariable("name") String tName, RedirectAttributes ra) {
+        try {
+            Tournament tournament = tournamentRepository.findByName(tName);
+            if (tournament == null) {
+                throw new RuntimeException("Giải đấu không tồn tại!");
+            }
+            
+            // Gọi hàm tính toán lại danh hiệu sếp đã viết sẵn
+            tournamentDetailService.updateDynamicTitles(tournament);
+            
+            ra.addFlashAttribute("message", "Thành công: Đã đồng bộ lại toàn bộ danh hiệu cho giải đấu này!");
+        } catch (Exception e) {
+            ra.addFlashAttribute("message", "Lỗi đồng bộ: " + e.getMessage());
+        }
+
+        // Chạy xong thì quay lại trang chi tiết giải đấu đó
+        return "redirect:/tournament-detail/" + tName;
     }
 }

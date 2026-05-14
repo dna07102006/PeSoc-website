@@ -425,10 +425,28 @@
                                      onerror="this.style.display='none'"> <i th:if="${r.tournament.banner == null or r.tournament.banner.isEmpty()}" class="fas fa-trophy text-secondary"></i>
                             </div>
                             <div class="d-flex flex-column">
-                                <span class="text-white fw-bold" th:text="${r.tournament.name}"></span>
-                                <span th:if="${r.finalRank != null}" class="text-warning" style="font-size: 0.75rem;">
-                                    <i class="fas fa-medal me-1"></i>Hạng: <span th:text="${r.finalRank}"></span>
-                                </span>
+                                <span class="text-white fw-bold mb-1" th:text="${r.tournament.name}"></span>
+                                
+                                <div class="d-flex flex-wrap align-items-center gap-2" style="font-size: 0.75rem;">
+                                    
+                                    <span th:if="${r.finalRank != null}" class="text-warning">
+                                        <i class="fas fa-medal me-1"></i>Hạng: <span th:text="${r.finalRank}"></span>
+                                    </span>
+                                    
+                                    <span th:if="${r.finalRank != null and (r.topScorer or r.goldenGlove or r.mostConceded)}" class="text-secondary">|</span>
+
+                                    <span th:if="${r.topScorer}" class="text-warning">
+                                        <i class="fas fa-futbol me-1"></i>Vua phá lưới
+                                    </span>
+                                    
+                                    <span th:if="${r.goldenGlove}" class="text-warning">
+                                        <i class="fas fa-mitten me-1"></i>Găng tay vàng
+                                    </span>
+                                    
+                                    <span th:if="${r.mostConceded}" class="text-warning">
+                                        <i class="fas fa-dizzy me-1"></i>Vua thủng lưới
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         <span class="badge-status text-danger">Đã kết thúc</span>
