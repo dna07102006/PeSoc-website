@@ -304,32 +304,35 @@
 
                 <div class="info-box">
                     <div class="info-title">Lịch sử ván đấu</div>
-                    <div th:each="m, iter : ${recentMatches}" th:if="${iter.index < 10}" class="match-row" th:data-url="@{'/match-detail/' + ${m.id}}" onclick="window.location.href=this.getAttribute('data-url')">
-                        <div class="m-date" th:text="${#temporals.format(m.date, 'dd/MM/yy')}"></div>
-                        <div class="m-main-col">
-                            <a th:href="@{'/profile/' + ${m.player1.username}}" class="m-player-name left" onclick="event.stopPropagation()" th:text="${m.player1.username}"></a>
-                            <div class="score-box">
-                                <div class="score-main-row">
-                                    <div class="avatar-container">
-                                        <img th:if="${m.player1.avatar != null}" th:src="@{'/uploads/avatars/' + ${m.player1.avatar}}" class="avatar-img">
-                                        <i th:if="${m.player1.avatar == null}" class="fas fa-user avatar-icon"></i>
+                    <div id="match-history-container">
+                        <div th:each="m, iter : ${recentMatches}" th:if="${iter.index < 5}" class="match-row" th:data-url="@{'/match-detail/' + ${m.id}}" onclick="window.location.href=this.getAttribute('data-url')">
+                            <div class="m-date" th:text="${#temporals.format(m.date, 'dd/MM/yy')}"></div>
+                            <div class="m-main-col">
+                                <a th:href="@{'/profile/' + ${m.player1.username}}" class="m-player-name left" onclick="event.stopPropagation()" th:text="${m.player1.username}"></a>
+                                <div class="score-box">
+                                    <div class="score-main-row">
+                                        <div class="avatar-container">
+                                            <img th:if="${m.player1.avatar != null}" th:src="@{'/uploads/avatars/' + ${m.player1.avatar}}" class="avatar-img">
+                                            <i th:if="${m.player1.avatar == null}" class="fas fa-user avatar-icon"></i>
+                                        </div>
+                                        <span th:text="${m.player1Score + ' - ' + m.player2Score}"></span>
+                                        <div class="avatar-container">
+                                            <img th:if="${m.player2.avatar != null}" th:src="@{'/uploads/avatars/' + ${m.player2.avatar}}" class="avatar-img">
+                                            <i th:if="${m.player2.avatar == null}" class="fas fa-user avatar-icon"></i>
+                                        </div>
                                     </div>
-                                    <span th:text="${m.player1Score + ' - ' + m.player2Score}"></span>
-                                    <div class="avatar-container">
-                                        <img th:if="${m.player2.avatar != null}" th:src="@{'/uploads/avatars/' + ${m.player2.avatar}}" class="avatar-img">
-                                        <i th:if="${m.player2.avatar == null}" class="fas fa-user avatar-icon"></i>
+                                    <div th:if="${m.player1Pen != null}" class="text-warning mt-1" style="font-size: 0.65rem;">
+                                        Pen: [[${m.player1Pen}]] - [[${m.player2Pen}]]
                                     </div>
                                 </div>
-                                <div th:if="${m.player1Pen != null}" class="text-warning mt-1" style="font-size: 0.65rem;">
-                                    Pen: [[${m.player1Pen}]] - [[${m.player2Pen}]]
-                                </div>
+                                <a th:href="@{'/profile/' + ${m.player2.username}}" class="m-player-name right" onclick="event.stopPropagation()" th:text="${m.player2.username}"></a>
                             </div>
-                            <a th:href="@{'/profile/' + ${m.player2.username}}" class="m-player-name right" onclick="event.stopPropagation()" th:text="${m.player2.username}"></a>
+                            <div class="m-tour-col" th:text="${m.tournament != null ? m.tournament.name : 'Giao hữu'}"></div>
                         </div>
-                        <div class="m-tour-col" th:text="${m.tournament != null ? m.tournament.name : 'Giao hữu'}"></div>
                     </div>
+                    
                     <div th:if="${#lists.isEmpty(recentMatches)}" class="text-muted small italic text-center py-2">Chưa có dữ liệu.</div>
-                    <button class="btn-load-more" onclick="alert('Gọi API phân trang ngầm để tải thêm 10 trận.')">Xem thêm trận đấu cũ hơn</button>
+                    <button class="btn-load-more" id="btn-load-matches" onclick="loadMoreMatches()">Xem thêm trận đấu cũ hơn</button>
                 </div>
             </div>
 
@@ -458,7 +461,7 @@
                     <div class="info-title">Lịch sử biến động (5 lần gần nhất)</div>
                     <table class="table-hist mt-3">
                         <thead><tr><th>Ngày</th><th>Hành động</th><th>Elo</th><th>Biến động</th></tr></thead>
-                        <tbody>
+                        <tbody id="elo-history-tbody">
                             <tr th:each="row, iter : ${eloTableRows}" th:if="${iter.index < 5}">
                                 <td th:text="${#temporals.format(row.date, 'dd/MM/yy HH:mm')}"></td>
                                 <td th:text="${row.note}"></td>
@@ -470,7 +473,7 @@
                             </tr>
                         </tbody>
                     </table>
-                    <button class="btn-load-more mt-3" onclick="alert('Gọi API phân trang ngầm tải thêm lịch sử.')">Xem thêm lịch sử cũ hơn</button>
+                    <button class="btn-load-more mt-3" id="btn-load-elo" onclick="loadMoreEloHistory()">Xem thêm lịch sử cũ hơn</button>
                 </div>
             </div>
         </div>
@@ -745,6 +748,142 @@
                 })
                 .catch(err => {
                     console.error("Lỗi tải bài viết:", err);
+                    btn.innerText = "Lỗi. Thử lại?";
+                    btn.disabled = false;
+                });
+        }
+
+        // ==============================================================
+        // --- XỬ LÝ LOAD MORE TRẬN ĐẤU & ELO BẰNG FETCH API ---
+        // ==============================================================
+        
+        const profileUsername = /*[[${user.username}]]*/ ''; 
+        
+        // 1. TẢI THÊM TRẬN ĐẤU
+        let currentMatchPage = 1; 
+        
+        function loadMoreMatches() {
+            const btn = document.getElementById('btn-load-matches');
+            const container = document.getElementById('match-history-container');
+            
+            btn.innerText = "Đang tải...";
+            btn.disabled = true;
+
+            fetch(`/api/profile/${profileUsername}/matches?page=${currentMatchPage}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.content && data.content.length > 0) {
+                        data.content.forEach(m => {
+                            // Xử lý Ngày
+                            let dateStr = "";
+                            if(m.date) {
+                                const d = new Date(m.date);
+                                dateStr = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}`;
+                            }
+                            
+                            // Xử lý Avatar
+                            const p1Ava = m.p1Avatar ? `<img src="/uploads/avatars/${m.p1Avatar}" class="avatar-img">` : `<i class="fas fa-user avatar-icon"></i>`;
+                            const p2Ava = m.p2Avatar ? `<img src="/uploads/avatars/${m.p2Avatar}" class="avatar-img">` : `<i class="fas fa-user avatar-icon"></i>`;
+                            
+                            // Xử lý Tỷ số / Pen
+                            let scoreHtml = '';
+                            if (m.p1Score !== null && m.p2Score !== null) {
+                                scoreHtml = `<span>${m.p1Score} - ${m.p2Score}</span>`;
+                            } else {
+                                scoreHtml = `<span class="text-info" style="font-size: 0.8rem; text-transform: lowercase;">vs</span>`;
+                            }
+                            let penHtml = '';
+                            if (m.p1Pen !== null) {
+                                penHtml = `<div class="text-warning mt-1" style="font-size: 0.65rem;">Pen: ${m.p1Pen} - ${m.p2Pen}</div>`;
+                            }
+
+                            // Tạo khối HTML cho Trận Đấu
+                            const html = `
+                                <div class="match-row" onclick="window.location.href='/match-detail/${m.id}'">
+                                    <div class="m-date">${dateStr}</div>
+                                    <div class="m-main-col">
+                                        <a href="/profile/${m.player1}" class="m-player-name left" onclick="event.stopPropagation()">${m.player1}</a>
+                                        <div class="score-box">
+                                            <div class="score-main-row">
+                                                <div class="avatar-container">${p1Ava}</div>
+                                                ${scoreHtml}
+                                                <div class="avatar-container">${p2Ava}</div>
+                                            </div>
+                                            ${penHtml}
+                                        </div>
+                                        <a href="/profile/${m.player2}" class="m-player-name right" onclick="event.stopPropagation()">${m.player2}</a>
+                                    </div>
+                                    <div class="m-tour-col">${m.tournament}</div>
+                                </div>
+                            `;
+                            container.insertAdjacentHTML('beforeend', html);
+                        });
+                        currentMatchPage++;
+                    }
+
+                    if (data.last) {
+                        btn.style.display = 'none'; // Đã hết trang
+                    } else {
+                        btn.innerText = "Xem thêm trận đấu cũ hơn";
+                        btn.disabled = false;
+                    }
+                })
+                .catch(err => {
+                    console.error("Lỗi:", err);
+                    btn.innerText = "Lỗi. Thử lại?";
+                    btn.disabled = false;
+                });
+        }
+
+        // 2. TẢI THÊM LỊCH SỬ ELO
+        let currentEloPage = 1;
+        
+        function loadMoreEloHistory() {
+            const btn = document.getElementById('btn-load-elo');
+            const tbody = document.getElementById('elo-history-tbody');
+            
+            btn.innerText = "Đang tải...";
+            btn.disabled = true;
+
+            fetch(`/api/profile/${profileUsername}/elo-history?page=${currentEloPage}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.content && data.content.length > 0) {
+                        data.content.forEach(row => {
+                            let dateStr = "";
+                            if(row.date) {
+                                const d = new Date(row.date);
+                                dateStr = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                            }
+                            
+                            // Tô màu Diff (+ xanh, - đỏ)
+                            let diffClass = "";
+                            let diffValue = row.diff || "-";
+                            if (typeof diffValue === 'string' && diffValue.startsWith("+")) diffClass = "text-fm-green";
+                            else if (typeof diffValue === 'string' && diffValue.startsWith("-")) diffClass = "text-danger";
+
+                            const html = `
+                                <tr>
+                                    <td>${dateStr}</td>
+                                    <td>${row.note}</td>
+                                    <td class="fw-bold text-white">${row.elo}</td>
+                                    <td class="${diffClass}">${diffValue}</td>
+                                </tr>
+                            `;
+                            tbody.insertAdjacentHTML('beforeend', html);
+                        });
+                        currentEloPage++;
+                    }
+
+                    if (data.last) {
+                        btn.style.display = 'none'; // Hết Data
+                    } else {
+                        btn.innerText = "Xem thêm lịch sử cũ hơn";
+                        btn.disabled = false;
+                    }
+                })
+                .catch(err => {
+                    console.error("Lỗi:", err);
                     btn.innerText = "Lỗi. Thử lại?";
                     btn.disabled = false;
                 });

@@ -18,6 +18,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,12 +30,14 @@ import com.pesoc.website.model.Match;
 import com.pesoc.website.model.TournamentRanking;
 import com.pesoc.website.model.User;
 import com.pesoc.website.repository.ArticleRepository;
+import com.pesoc.website.repository.EloHistoryRepository;
 import com.pesoc.website.repository.MatchRepository;
 import com.pesoc.website.repository.TournamentRankingRepository;
 import com.pesoc.website.service.ProfileService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -50,6 +53,8 @@ public class ProfileController {
     private MatchRepository matchRepository;
     @Autowired
     private ArticleRepository articleRepository;
+    @Autowired
+    private EloHistoryRepository eloHistoryRepository;
 
     ProfileController(UserRepository userRepository) {
         this.userRepository = userRepository;
@@ -162,6 +167,89 @@ public class ProfileController {
         Page<Article> authorArticles = articleRepository.findByAuthor(userRepository.findByUsername(username), pageable);
         model.addAttribute("authorArticles", authorArticles);
         return "profile";
+    }
+
+    // ==========================================
+    // API 1: TẢI THÊM TRẬN ĐẤU (5 TRẬN/LẦN)
+    // ==========================================
+    @GetMapping("/api/profile/{username}/matches")
+    @ResponseBody
+    public ResponseEntity<?> getMoreMatches(@PathVariable("username") String username, 
+                                            @RequestParam(defaultValue = "1") int page) {
+        User user = userRepository.findByUsername(username);
+        if (user == null) return ResponseEntity.badRequest().build();
+
+        // page bắt đầu từ 0. Trên web đã load 5 trận đầu (page 0), nên load more sẽ gọi page 1, 2, 3...
+        Pageable pageable = PageRequest.of(page, 5, Sort.by("date").descending());
+        
+        // Sếp NHỚ THÊM HÀM NÀY VÀO MatchRepository nếu chưa có nhé: 
+        // Page<Match> findByPlayer1OrPlayer2(User p1, User p2, Pageable pageable);
+        Page<Match> matchPage = matchRepository.findCompletedMatchesByUser(user, pageable);
+
+        List<Map<String, Object>> result = matchPage.getContent().stream().map(m -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", m.getId());
+            map.put("date", m.getDate() != null ? m.getDate().toString() : ""); 
+            map.put("player1", m.getPlayer1().getUsername());
+            map.put("p1Avatar", m.getPlayer1().getAvatar());
+            map.put("player2", m.getPlayer2().getUsername());
+            map.put("p2Avatar", m.getPlayer2().getAvatar());
+            map.put("p1Score", m.getPlayer1Score());
+            map.put("p2Score", m.getPlayer2Score());
+            map.put("p1Pen", m.getPlayer1Pen());
+            map.put("p2Pen", m.getPlayer2Pen());
+            map.put("tournament", m.getTournament() != null ? m.getTournament().getName() : "Giao hữu");
+            return map;
+        }).collect(Collectors.toList());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", result);
+        response.put("last", matchPage.isLast()); 
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ==========================================
+    // API 2: TẢI THÊM LỊCH SỬ ELO (5 DÒNG/LẦN)
+    // ==========================================
+    // ==========================================
+    // API 2: TẢI THÊM LỊCH SỬ ELO (5 DÒNG/LẦN) - ĐÃ FIX LỖI "DIFF"
+    // ==========================================
+    @GetMapping("/api/profile/{username}/elo-history")
+    @ResponseBody
+    public ResponseEntity<?> getMoreEloHistory(@PathVariable("username") String username, 
+                                               @RequestParam(defaultValue = "1") int page) {
+        User user = userRepository.findByUsername(username);
+        if (user == null) return ResponseEntity.badRequest().build();
+
+        // Sort giảm dần theo changeDate
+        Pageable pageable = PageRequest.of(page, 5, Sort.by("changeDate").descending());
+        Page<EloHistory> eloPage = eloHistoryRepository.findByUser(user, pageable);
+
+        List<Map<String, Object>> result = eloPage.getContent().stream().map(e -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("date", e.getChangeDate() != null ? e.getChangeDate().toString() : "");
+            map.put("note", e.getNote());
+            map.put("elo", e.getElo());
+
+            // TÍNH TOÁN BIẾN ĐỘNG (DIFF)
+            // Tìm mốc lịch sử gần nhất TRƯỚC cái changeDate của dòng hiện tại
+            EloHistory prev = eloHistoryRepository.findFirstByUserAndChangeDateLessThanOrderByChangeDateDesc(user, e.getChangeDate());
+            String diff = "-";
+            if (prev != null) {
+                int change = e.getElo() - prev.getElo();
+                diff = (change >= 0) ? "+" + change : String.valueOf(change);
+            }
+            map.put("diff", diff); 
+
+            return map;
+        }).collect(Collectors.toList());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", result);
+        response.put("last", eloPage.isLast());
+
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/profile/{username}/update-pes-username")

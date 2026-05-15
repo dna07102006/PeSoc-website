@@ -38,6 +38,8 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
 
     Page<Match> findByUpcomingOrderByDateDesc(boolean upcoming, Pageable pageable);
     Page<Match> findByUpcomingOrderByIdAsc(boolean upcoming, Pageable pageable);
-
     List<Match> findByTournament(Tournament tournament);
+
+    @Query("SELECT m FROM Match m WHERE (m.player1 = :user OR m.player2 = :user) AND m.upcoming = false")
+    Page<Match> findCompletedMatchesByUser(@Param("user") User user, Pageable pageable);
 }
