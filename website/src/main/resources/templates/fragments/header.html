@@ -97,6 +97,60 @@
         .auth-wrapper { display: flex; align-items: center; border-left: 1px solid rgba(255, 255, 255, 0.15); padding-left: 20px; margin-left: 15px; }
         .btn-logout { color: #888 !important; text-decoration: none; font-size: 0.8rem; margin-left: 15px; transition: 0.3s; }
         .btn-logout:hover { color: #dc3545 !important; }
+
+        /* ========================================================
+           📱 GIAO DIỆN ĐIỆN THOẠI (MOBILE RESPONSIVE PATCH V2.0)
+           ======================================================== */
+        @media (max-width: 991px) {
+            /* Thanh Header */
+            .search-wrapper { width: 100% !important; margin: 15px 0 10px 0 !important; }
+            .auth-wrapper { border-left: none !important; padding-left: 0 !important; margin-left: 0 !important; margin-top: 15px; justify-content: center; }
+        }
+
+        @media (max-width: 768px) {
+            /* --- 1. ÉP MATCH ROW CHUẨN FOTMOB (Cho Home, Lịch sử, Sắp tới) --- */
+            .match-item, .match-row { flex-wrap: wrap !important; padding: 12px !important; }
+            .match-date-col, .m-date { width: 50% !important; text-align: left !important; border-bottom: none !important; margin-bottom: 10px; font-weight: 600; color: #888; }
+            .match-tour-col, .m-tour-col { width: 50% !important; text-align: right !important; border-top: none !important; margin-top: 0 !important; margin-bottom: 10px; }
+            .match-main-col, .m-main-col { width: 100% !important; justify-content: center !important; padding-top: 10px; border-top: 1px dashed #333; }
+            .player-name, .m-player-name { width: auto !important; max-width: 95px !important; font-size: 0.85rem !important; }
+
+            /* Fix riêng phần Danh sách Trận đấu trong trang Chi tiết Giải (Do không có cột tên giải bên phải) */
+            #tab-matches .m-date { width: 100% !important; text-align: center !important; border-bottom: 1px dashed #333 !important; padding-bottom: 8px !important; margin-bottom: 8px !important; }
+            #tab-matches .m-main-col { border-top: none !important; padding-top: 0 !important; }
+
+            /* --- 2. BẢNG XẾP HẠNG (BXH ELO & BXH GIẢI ĐẤU) CÓ THANH CUỘN --- */
+            .table-responsive { overflow-x: auto !important; -webkit-overflow-scrolling: touch; border: none !important; }
+            .table-elo, .table-ranking { min-width: 600px; /* Ép độ rộng tối thiểu để vuốt ngang, không bị dúm chữ */ }
+            
+            /* --- 3. FIX TRANG CHI TIẾT GIẢI ĐẤU (TOURNAMENT DETAIL) --- */
+            .td-banner { justify-content: center !important; text-align: center; }
+            .td-avatar-wrapper { margin: 0 auto; }
+            .td-meta { justify-content: center; }
+            
+            /* Vuốt ngang các Tab menu thay vì ép rớt dòng */
+            .nav-tabs-chess { flex-wrap: nowrap !important; overflow-x: auto !important; overflow-y: hidden; justify-content: flex-start !important; }
+            .nav-tabs-chess .nav-link { white-space: nowrap; flex-shrink: 0; }
+            .nav-tabs-chess::-webkit-scrollbar { height: 0px; } /* Giấu scrollbar đi cho đẹp gọn */
+
+            /* --- 4. CÁC TINH CHỈNH PROFILE & NEWS KHÁC --- */
+            .stats-row { flex-wrap: wrap; }
+            .stat-card { flex: 0 0 50%; border-bottom: 1px solid #2d2d2d; }
+            .stat-card:nth-child(even) { border-right: none; }
+            .stat-card:nth-child(3), .stat-card:nth-child(4) { border-bottom: none; }
+
+            .match-main-info { gap: 15px !important; }
+            .player-avatar { width: 60px !important; height: 60px !important; }
+            .player-avatar i { font-size: 3rem !important; }
+            .score-val { font-size: 2.5rem !important; }
+            
+            .hero-main { height: 280px !important; }
+            .hero-title { font-size: 1.3rem !important; }
+            .li-thumb { width: 90px !important; height: 65px !important; }
+            .article-title { font-size: 1.8rem !important; } /* Cân đối lại tiêu đề bài báo */
+            
+            .adv2-info-box .col-6 { width: 100% !important; }
+        }
     </style>
 </head>
 <body>
@@ -104,8 +158,12 @@
         <nav class="navbar navbar-expand-lg navbar-dark navbar-custom fixed-top">
             <div class="container">
                 <a class="navbar-brand fw-bold fs-3" th:href="@{/home}">PESOC</a>
-                
-                <div class="collapse navbar-collapse">
+               
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#pesocNavbar" aria-controls="pesocNavbar" aria-expanded="false" aria-label="Toggle navigation" style="border: 1px solid #333; box-shadow: none;">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="pesocNavbar">
                     <div class="search-wrapper ms-4">
                         <div class="search-container">
                             <i class="fas fa-search text-secondary"></i>
