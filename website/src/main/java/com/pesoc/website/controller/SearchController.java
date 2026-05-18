@@ -24,17 +24,27 @@ public class SearchController {
         Map<String, Object> results = new HashMap<>();
         String cleanKw = keyword.trim();
 
-        // 1. Trả về list chứa mỗi 'username' để bảo mật mật khẩu
+        // 1. Trả về username và avatar (Dùng HashMap để an toàn với giá trị null)
         results.put("users", userRepository.searchUsers(cleanKw).stream()
-                .map(u -> Map.of("username", u.getUsername()))
+                .map(u -> {
+                    Map<String, Object> userMap = new HashMap<>();
+                    userMap.put("username", u.getUsername());
+                    userMap.put("avatar", u.getAvatar()); // Trả thêm avatar
+                    return userMap;
+                })
                 .toList());
 
-        // 2. Trả về list chứa mỗi 'name' của giải đấu
+        // 2. Trả về name và banner của giải đấu
         results.put("tournaments", tournamentRepository.searchTournaments(cleanKw).stream()
-                .map(t -> Map.of("name", t.getName()))
+                .map(t -> {
+                    Map<String, Object> tourMap = new HashMap<>();
+                    tourMap.put("name", t.getName());
+                    tourMap.put("banner", t.getBanner()); // Trả thêm banner
+                    return tourMap;
+                })
                 .toList());
 
-        // 3. Trả về list các chuỗi tên Tag (Ở đoạn cũ b dùng 'keyword' thay vì 'cleanKw', mình sửa lại luôn cho mượt)
+        // 3. Trả về list các chuỗi tên Tag
         results.put("tags", tagRepository.findByNameContainingIgnoreCase(cleanKw).stream()
                 .map(Tag::getName)
                 .toList());
