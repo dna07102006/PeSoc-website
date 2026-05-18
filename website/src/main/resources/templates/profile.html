@@ -554,17 +554,32 @@
         let myEloChart = null;
 
         if (rawLabels.length > 0) {
-            // Chuẩn hóa dữ liệu sang dạng Obj {x: Date, y: Elo}
-            fullChartData = rawLabels.map((timeStr, index) => ({
+            // 1. Chuyển hóa dữ liệu thô sang mảng tạm thời
+            let rawChartData = rawLabels.map((timeStr, index) => ({
                 x: new Date(timeStr),
                 y: rawDataPoints[index]
             }));
 
-            // Ép thêm mốc thời điểm hiện tại (ngay lúc này) để line đồ thị dài ra tới hiện tại
-            fullChartData.push({
+            // Ép thêm mốc ELO hiện tại (ngay lúc này)
+            rawChartData.push({
                 x: new Date(),
                 y: currentElo
             });
+
+            // 2. THUẬT TOÁN GỘP NGÀY (Chỉ lấy điểm ELO cuối cùng của mỗi ngày)
+            let dailyMap = new Map();
+            rawChartData.forEach(point => {
+                // Ép ngày tháng năm thành 1 chuỗi Key (VD: 2026-05-18)
+                const d = point.x;
+                const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                
+                // Vì danh sách gốc đã được sắp xếp theo thời gian từ cũ tới mới,
+                // Hành động "ghi đè" (set) này sẽ khiến mốc thời gian cuối cùng của ngày đó được giữ lại.
+                dailyMap.set(dateKey, point);
+            });
+
+            // 3. Trả dữ liệu đã lọc sạch sẽ vào fullChartData để vẽ đồ thị
+            fullChartData = Array.from(dailyMap.values());
 
             // 2. KHỞI TẠO BIỂU ĐỒ LẦN ĐẦU
             const ctx = document.getElementById('eloChart').getContext('2d');
