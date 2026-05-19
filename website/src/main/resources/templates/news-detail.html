@@ -72,13 +72,24 @@
         .btn-submit-cmt { background: #111; color: #fff; border: none; font-weight: 600; padding: 8px 25px; border-radius: 4px; font-size: 0.9rem; cursor: pointer; transition: 0.2s; }
         .btn-submit-cmt:hover { background: var(--fm-green); }
 
-        .comment-list { display: flex; flex-direction: column; }
+        /* Đổi thành thế này */
+        .comment-list { display: flex; flex-direction: column-reverse; }
         .comment-item { display: flex; gap: 15px; padding: 15px 0; border-bottom: 1px solid #eee; }
         .ci-avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; overflow: hidden; background: #eee; display: flex; align-items: center; justify-content: center; }
         .ci-avatar img { width: 100%; height: 100%; object-fit: cover; }
         
         .ci-main { flex-grow: 1; }
-        .ci-text { font-size: 0.95rem; color: #333; line-height: 1.5; margin-bottom: 8px; }
+        /* Sửa class .ci-text thành như thế này */
+        .ci-text { 
+            font-size: 0.95rem; 
+            color: #333; 
+            line-height: 1.5; 
+            margin-bottom: 8px;
+            /* 3 dòng "thần thánh" giúp chống tràn chữ */
+            word-wrap: break-word; 
+            word-break: break-word; 
+            overflow-wrap: break-word; 
+        }
         .ci-author { font-weight: 700; color: #111; text-decoration: none; margin-right: 5px; }
         .ci-author:hover { color: var(--fm-green); }
         .ci-tag { color: var(--fm-green); font-weight: 600; margin-right: 2px; }
@@ -169,7 +180,7 @@
 
                 <div class="comment-list">
                     <th:block th:each="c : ${article.comments}" th:if="${c.parentComment == null}">
-                        
+                        <div class="comment-thread" style="display: block; width: 100%;">
                         <div class="comment-item">
                             <div class="ci-avatar">
                                 <img th:if="${c.user.avatar != null}" th:src="@{'/uploads/avatars/' + ${c.user.avatar}}">
@@ -178,7 +189,7 @@
                             <div class="ci-main">
                                 <div class="ci-text">
                                     <a th:href="@{'/profile/' + ${c.user.username}}" class="ci-author" th:text="${c.user.username}"></a>
-                                    <span th:text="${c.content}"></span>
+                                    <span class="comment-body" th:text="${c.content}"></span>
                                 </div>
                                 
                                 <div class="ci-actions">
@@ -191,7 +202,12 @@
                                         <div class="tooltip-content"><span th:each="u, iter : ${c.likedUsers}" th:text="${u.username + (iter.last ? '' : ', ')}"></span></div>
                                     </div>
                                     
-                                    <button type="button" class="ci-btn ms-3" th:data-target="${c.id}" onclick="toggleReplyForm(this.getAttribute('data-target'))">Trả lời</button>
+                                    <button type="button" class="ci-btn ms-3" 
+                                            th:data-target="${c.id}" 
+                                            th:data-user="${c.user.username}" 
+                                            onclick="toggleReplyForm(this.getAttribute('data-target'), this.getAttribute('data-user'))">
+                                        Trả lời
+                                    </button>
                                     
                                     <span class="ci-time" th:text="${c.createdAt != null ? #temporals.format(c.createdAt, 'dd/MM/yyyy HH:mm') : 'Vừa xong'}"></span>
                                 </div>
@@ -218,19 +234,7 @@
                                 <div class="ci-main">
                                     <div class="ci-text">
                                         <a th:href="@{'/profile/' + ${reply.user.username}}" class="ci-author" th:text="${reply.user.username}"></a>
-                                        
-                                        <th:block th:if="${#strings.startsWith(reply.content, '@') and #strings.contains(reply.content, ' ')}">
-                                            <span class="ci-tag" th:text="${#strings.substringBefore(reply.content, ' ')}"></span>
-                                            <span th:text="${' ' + #strings.substringAfter(reply.content, ' ')}"></span>
-                                        </th:block>
-                                        
-                                        <th:block th:if="${#strings.startsWith(reply.content, '@') and !#strings.contains(reply.content, ' ')}">
-                                            <span class="ci-tag" th:text="${reply.content}"></span>
-                                        </th:block>
-                                        
-                                        <th:block th:if="${!#strings.startsWith(reply.content, '@')}">
-                                            <span th:text="${reply.content}"></span>
-                                        </th:block>
+                                        <span class="comment-body" th:text="${reply.content}"></span>
                                     </div>
                                     
                                     <div class="ci-actions">
@@ -243,14 +247,19 @@
                                             <div class="tooltip-content"><span th:each="u, iter : ${reply.likedUsers}" th:text="${u.username + (iter.last ? '' : ', ')}"></span></div>
                                         </div>
                                         
-                                        <button type="button" class="ci-btn ms-3" th:data-target="${c.id}" th:data-user="${c.user.username}" onclick="toggleReplyForm(this.getAttribute('data-target'), this.getAttribute('data-user'))">Trả lời</button>
+                                        <button type="button" class="ci-btn ms-3" 
+                                                th:data-target="${c.id}" 
+                                                th:data-user="${reply.user.username}" 
+                                                onclick="toggleReplyForm(this.getAttribute('data-target'), this.getAttribute('data-user'))">
+                                            Trả lời
+                                        </button>
                                         
                                         <span class="ci-time" th:text="${reply.createdAt != null ? #temporals.format(reply.createdAt, 'dd/MM/yyyy HH:mm') : 'Vừa xong'}"></span>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
+                        </div>
                     </th:block>
                 </div>
             </div>
@@ -423,6 +432,51 @@
                     tribute.attach(box);
                 });
             }
+        });
+  
+        function replyTo(username) {
+            // 1. Tìm ô nhập comment chính (textarea)
+            var commentBox = document.getElementById('comment-box'); 
+            
+            // 2. Gán tên người được trả lời vào ô nhập liệu
+            if (commentBox) {
+                commentBox.value = "@" + username + " "; 
+                
+                // 3. Cuộn trang đến ô nhập liệu và focus để sếp gõ luôn
+                commentBox.scrollIntoView({ behavior: 'smooth' });
+                commentBox.focus();
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const knownUsers = new Set();
+            document.querySelectorAll('.ci-author').forEach(el => knownUsers.add(el.textContent.trim()));
+            knownUsers.add('all');
+
+            document.querySelectorAll('.comment-body').forEach(el => {
+                let text = el.textContent;
+                if(text.includes('@')) {
+                    let matchedUser = null;
+                    knownUsers.forEach(user => {
+                        if (text.includes('@' + user)) {
+                            if (!matchedUser || user.length > matchedUser.length) {
+                                matchedUser = user;
+                            }
+                        }
+                    });
+                    
+                    if (matchedUser) {
+                        let tag = '@' + matchedUser;
+                        let parts = text.split(tag);
+                        let safeHtml = parts.map(p => {
+                            let div = document.createElement('div');
+                            div.textContent = p;
+                            return div.innerHTML;
+                        }).join('<span class="ci-tag">' + tag + '</span>');
+                        el.innerHTML = safeHtml;
+                    }
+                }
+            });
         });
     </script>
 </body>

@@ -84,88 +84,93 @@ public class NewsController {
             
             commentRepository.save(comment);
             
-            // --- QUÉT CÁC TÊN BỊ TAG TRONG Ô NHẬP ĐỂ LÀM BỘ LỌC ---
+            // --- XÓA CÁI REGEX CŨ ĐI VÀ THAY BẰNG ĐOẠN NÀY ---
             String authorUsername = (article.getAuthor() != null) ? article.getAuthor().getUsername() : null;
             boolean isTagAll = false;
             java.util.Set<String> mentionedUsernames = new java.util.HashSet<>();
 
             try {
-                java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("@([a-zA-Z0-9_]+)");
-                java.util.regex.Matcher matcher = pattern.matcher(content); 
-                while (matcher.find()) {
-                    mentionedUsernames.add(matcher.group(1)); 
+                // 🌟 THẦN CHÚ MỚI: Quét tất cả User trong DB để tìm tên chính xác 100% (hỗ trợ dấu cách, Tiếng Việt)
+                List<User> allUsers = userRepository.findAll(); 
+                for (User u : allUsers) {
+                    if (content.contains("@" + u.getUsername())) {
+                        mentionedUsernames.add(u.getUsername());
+                    }
                 }
-                isTagAll = mentionedUsernames.stream().anyMatch(name -> name.equalsIgnoreCase("all"));
+                
+                if (content.contains("@all")) {
+                    isTagAll = true;
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            
-            // --- XỬ LÝ PHÂN LUỒNG BẮN THÔNG BÁO THÔNG MINH ---
+            // ------------------------------------------------
+
+            // --- XỬ LÝ PHÂN LUỒNG BẮN THÔNG BÁO TỐI ƯU NHẤT ---
             try {
+                String currentLoginUser = loggedInUser.getUsername();
+                String targetUrl = "/news/" + id;
+                
+                // 🛡️ BỘ LỌC CHỐNG TRÙNG LẶP (Ai nhận thông báo rồi thì sẽ vào danh sách này)
+                java.util.Set<String> alreadyNotified = new java.util.HashSet<>();
+                alreadyNotified.add(currentLoginUser); // Không bao giờ tự gửi cho chính mình
+
+                // 1. NẾU LÀ BÌNH LUẬN TRẢ LỜI (REPLY)
+                if (parent != null && parent.getUser() != null) {
+                    String parentAuthor = parent.getUser().getUsername();
+                    if (!alreadyNotified.contains(parentAuthor)) {
+                        String replyTitle = "Phản hồi mới! 💬";
+                        String replyBody = currentLoginUser + " đã trả lời bình luận của bạn: \"" + content + "\"";
+                        
+                        sendInAppNotification(parentAuthor, replyTitle, replyBody, targetUrl);
+                        firebaseService.sendToUser(parentAuthor, replyTitle, replyBody, targetUrl);
+                        
+                        alreadyNotified.add(parentAuthor); // Đã gửi -> Đưa vào danh sách đen
+                    }
+                } 
+                // 2. NẾU LÀ BÌNH LUẬN GỐC (COMMENT VÀO BÀI VIẾT)
+                else if (authorUsername != null) {
+                    if (!alreadyNotified.contains(authorUsername)) {
+                        String commentTitle = "Bình luận mới! 💬";
+                        String commentBody = currentLoginUser + " vừa bình luận vào bài viết của bạn: \"" + content + "\"";
+                        
+                        sendInAppNotification(authorUsername, commentTitle, commentBody, targetUrl);
+                        firebaseService.sendToUser(authorUsername, commentTitle, commentBody, targetUrl);
+                        
+                        alreadyNotified.add(authorUsername); // Đã gửi -> Đưa vào danh sách đen
+                    }
+                }
+
+                // 3. XỬ LÝ TAG TÊN (@all hoặc tag đích danh)
                 if (isTagAll) {
-                    // 1. Firebase (Web Push cũ)
+                    // a) Bắn Web Push (Firebase) cho tất cả
                     firebaseService.sendToAllUsers(
-                        loggedInUser.getUsername(),
+                        currentLoginUser,
                         "Thông báo diện rộng! 📢",
-                        loggedInUser.getUsername() + " vừa nhắc đến tất cả mọi người trong một bình luận: \"" + content + "\"", "/news/" + id
+                        currentLoginUser + " vừa nhắc đến tất cả mọi người trong một bình luận: \"" + content + "\"", 
+                        targetUrl
                     );
 
-                    // 2. 🌟 GIẢI PHÁP IN-APP CHO NHIỀU NGƯỜI: Vòng lặp gửi WebSocket cho tất cả
-                    List<User> allUsers = userRepository.findAll(); // Lấy tất cả user từ DB
+                    // b) Bắn In-App (Cái chuông) cho tất cả (trừ những người đã nhận ở bước 1 & 2)
+                    List<User> allUsers = userRepository.findAll();
                     for (User u : allUsers) {
-                        // Trừ bản thân người gõ comment ra, còn lại bắn hết!
-                        if (!u.getUsername().equals(loggedInUser.getUsername())) {
-                            sendInAppNotification(u.getUsername(), "Thông báo diện rộng! 📢", loggedInUser.getUsername() + " vừa nhắc đến tất cả mọi người trong một bình luận: \"" + content + "\"", "/news/" + id);
+                        String receiver = u.getUsername();
+                        if (!alreadyNotified.contains(receiver)) {
+                            sendInAppNotification(receiver, "Thông báo diện rộng! 📢", currentLoginUser + " vừa nhắc đến tất cả mọi người trong một bình luận: \"" + content + "\"", targetUrl);
+                            alreadyNotified.add(receiver); // Đánh dấu là đã gửi
                         }
                     }
                 } else {
-                    if (parentId != null) {
-                        // =========================================================
-                        // TRƯỜNG HỢP 1: LÀ BÌNH LUẬN PHẢN HỒI (Tầng 2, Tầng 3...)
-                        // =========================================================
-                        
-                        // BẢO HIỂM: Nếu sếp lỡ tay xóa chữ @tag trong ô nhập, hệ thống tự động lôi chủ nhân của comment cha ra để gửi.
-                        if (mentionedUsernames.isEmpty() && parent != null && parent.getUser() != null) {
-                            mentionedUsernames.add(parent.getUser().getUsername());
-                        }
-
-                        // Bắn thông báo "ĐÃ TRẢ LỜI" cho những người bị tag trong ô reply
-                        for (String uname : mentionedUsernames) {
-                            if (userRepository.findByUsername(uname) != null && !uname.equals(loggedInUser.getUsername())) {
-                                firebaseService.sendToUser(
-                                    uname, 
-                                    "Phản hồi mới! 💬", 
-                                    loggedInUser.getUsername() + " đã trả lời bình luận của bạn: \"" + content + "\"", "/news/" + id
-                                );
-                                sendInAppNotification(uname, "Phản hồi mới! 💬", loggedInUser.getUsername() + " đã trả lời bình luận của bạn", "/news/" + id);
-                            }
-                        }
-                    } else {
-                        // =========================================================
-                        // TRƯỜNG HỢP 2: LÀ BÌNH LUẬN GỐC (Tầng 1)
-                        // =========================================================
-                        
-                        // a) Bắn cho Tác giả bài viết trước
-                        if (authorUsername != null && !authorUsername.equals(loggedInUser.getUsername())) {
-                            mentionedUsernames.remove(authorUsername); // Xóa khỏi danh sách tag để tránh bị bắn chuông 2 lần
-                            firebaseService.sendToUser(
-                                authorUsername, 
-                                "Bình luận mới! 💬", 
-                                loggedInUser.getUsername() + " vừa bình luận vào bài viết của bạn: \"" + content + "\"", "/news/" + id
-                            );
-                            sendInAppNotification(authorUsername, "Bình luận mới! 💬", loggedInUser.getUsername() + " vừa bình luận vào bài viết của bạn: \"" + content + "\"", "/news/" + id);
-                        }
-                        
-                        // b) Bắn cho những người bị tag lẻ tẻ trong bình luận gốc (Nhắc tên)
-                        for (String uname : mentionedUsernames) {
-                            if (userRepository.findByUsername(uname) != null && !uname.equals(loggedInUser.getUsername())) {
-                                firebaseService.sendToUser(
-                                    uname, 
-                                    "Bạn được nhắc tên! 🏷️", 
-                                    loggedInUser.getUsername() + " vừa nhắc đến bạn trong một bình luận: \"" + content + "\"", "/news/" + id
-                                );
-                                sendInAppNotification(uname, "Bạn được nhắc tên! 🏷️", loggedInUser.getUsername() + " vừa nhắc đến bạn trong một bình luận: \"" + content + "\"", "/news/" + id);
-                            }
+                    // Chỉ tag lẻ tẻ vài người
+                    for (String receiver : mentionedUsernames) {
+                        if (!alreadyNotified.contains(receiver)) {
+                            String tagTitle = "Bạn được nhắc tên! 🏷️";
+                            String tagBody = currentLoginUser + " vừa nhắc đến bạn trong một bình luận: \"" + content + "\"";
+                            
+                            sendInAppNotification(receiver, tagTitle, tagBody, targetUrl);
+                            firebaseService.sendToUser(receiver, tagTitle, tagBody, targetUrl);
+                            
+                            alreadyNotified.add(receiver); // Đánh dấu là đã gửi
                         }
                     }
                 }
