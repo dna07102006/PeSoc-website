@@ -118,6 +118,10 @@
             height: 100%;
             object-fit: contain; /* Căn chỉnh contain như bạn yêu cầu */
         }
+        /* Ép bảng Top Elo ở trang chủ co lại vừa màn hình điện thoại, ghi đè lệnh 600px của thẻ header */
+        @media (max-width: 768px) {
+            .table-elo { min-width: 100% !important; }
+        }
     </style>
 </head>
 <body>

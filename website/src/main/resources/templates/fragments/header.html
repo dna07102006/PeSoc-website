@@ -117,15 +117,63 @@
 
         @media (max-width: 768px) {
             /* --- 1. ÉP MATCH ROW CHUẨN FOTMOB (Cho Home, Lịch sử, Sắp tới) --- */
-            .match-item, .match-row { flex-wrap: wrap !important; padding: 12px !important; }
-            .match-date-col, .m-date { width: 50% !important; text-align: left !important; border-bottom: none !important; margin-bottom: 10px; font-weight: 600; color: #888; }
-            .match-tour-col, .m-tour-col { width: 50% !important; text-align: right !important; border-top: none !important; margin-top: 0 !important; margin-bottom: 10px; }
-            .match-main-col, .m-main-col { width: 100% !important; justify-content: center !important; padding-top: 10px; border-top: 1px dashed #333; }
-            .player-name, .m-player-name { width: auto !important; max-width: 95px !important; font-size: 0.85rem !important; }
+            .match-item, .match-row { 
+                display: flex !important; 
+                flex-wrap: wrap !important; 
+                padding: 12px 10px 15px 10px !important; 
+                align-items: center;
+            }
+            
+            /* Dòng 1: Đưa Ngày và Giải đấu lên trên cùng, chia đôi 50/50 */
+            .match-date-col, .m-date { 
+                order: 1; 
+                width: 50% !important; 
+                text-align: left !important; 
+                margin-bottom: 10px; 
+                font-weight: 600; 
+                color: #888; 
+                border: none !important; /* Xóa mọi đường kẻ */
+            }
+            .match-tour-col, .m-tour-col { 
+                order: 2; 
+                width: 50% !important; 
+                text-align: right !important; 
+                margin-bottom: 10px; 
+                margin-top: 0 !important;
+                color: #aaa; 
+            }
+            
+            /* Dòng 2: Nội dung chính trận đấu (Chứa người chơi và tỉ số) */
+            .match-main-col, .m-main-col { 
+                order: 3; 
+                width: 100% !important; 
+                display: flex !important; 
+                align-items: center !important; 
+                border-top: none !important; /* 🌟 Đã xóa vạch gạch chấm theo ý sếp */
+                padding-top: 0 !important;
+            }
 
-            /* Fix riêng phần Danh sách Trận đấu trong trang Chi tiết Giải (Do không có cột tên giải bên phải) */
-            #tab-matches .m-date { width: 100% !important; text-align: center !important; border-bottom: 1px dashed #333 !important; padding-bottom: 8px !important; margin-bottom: 8px !important; }
-            #tab-matches .m-main-col { border-top: none !important; padding-top: 0 !important; }
+            /* 🌟 MA THUẬT: Cân bằng 2 tên người chơi, ép cắt chữ (ellipsis) nếu quá dài để không lệch tỉ số */
+            .match-main-col .player-name, .m-main-col .m-player-name { 
+                flex: 1; 
+                width: 0 !important; 
+                max-width: none !important; 
+                white-space: nowrap; 
+                overflow: hidden; 
+                text-overflow: ellipsis; 
+                font-size: 0.9rem !important; 
+            }
+            /* Đẩy lề 2 bên ra 1 chút để không dính vào Avatar */
+            .match-main-col .player-name.text-end, .m-main-col .m-player-name.text-end { padding-right: 8px; }
+            .match-main-col .player-name:not(.text-end), .m-main-col .m-player-name:not(.text-end) { padding-left: 8px; }
+            
+            /* Giữ chặt cục tỉ số/VS ở giữa không bị bóp méo */
+            .score-box { flex-shrink: 0; min-width: 110px; }
+
+            /* Fix riêng trang Chi tiết Giải */
+            #tab-matches .m-date { width: 100% !important; text-align: center !important; margin-bottom: 12px !important; padding-bottom: 0 !important; }
+            
+            /* ... (Giữ nguyên các khối số 2, 3, 4 bên dưới của sếp nhé) ... */
 
             /* --- 2. BẢNG XẾP HẠNG (BXH ELO & BXH GIẢI ĐẤU) CÓ THANH CUỘN --- */
             .table-responsive { overflow-x: auto !important; -webkit-overflow-scrolling: touch; border: none !important; }
@@ -167,56 +215,39 @@
             <div class="container">
                 <a class="navbar-brand fw-bold fs-3" th:href="@{/home}">PESOC</a>
                
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#pesocNavbar" aria-controls="pesocNavbar" aria-expanded="false" aria-label="Toggle navigation" style="border: 1px solid #333; box-shadow: none;">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-
-                <div class="collapse navbar-collapse" id="pesocNavbar">
-                    <div class="search-wrapper ms-4">
-                        <div class="search-container">
-                            <i class="fas fa-search text-secondary"></i>
-                            <input class="form-control search-input" type="text" id="quick-search" placeholder="Tìm kiếm tài khoản, giải đấu, #hashtag..." autocomplete="off">
-                        </div>
-                        <div id="search-results"></div>
-                    </div>
+                <div class="d-flex align-items-center ms-auto order-lg-last">
                     
-                    <ul class="navbar-nav mx-auto gap-2">
-                        <li class="nav-item"><a class="nav-link" th:href="@{/elo-board}">BXH Elo</a></li>
-                        <li class="nav-item"><a class="nav-link" th:href="@{/tournaments}">Giải đấu</a></li>
-                        <li class="nav-item"><a class="nav-link" th:href="@{/news}">Tin tức</a></li>
-                        <li class="nav-item"><a class="nav-link" th:href="@{/about-us}">Về chúng tôi</a></li>
-                    </ul>
-                    
-                    <div class="auth-wrapper">
+                    <div class="auth-wrapper d-flex align-items-center me-2 me-lg-0" style="border-left: none; padding-left: 0; margin-left: 0;">
                         <th:block th:if="${session.logInUser == null}">
-                            <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" 
-                                    style="font-size: 0.85rem;" data-bs-toggle="modal" data-bs-target="#loginModal">
-                                Đăng nhập
-                            </button>
+                             <button type="button" class="btn btn-light rounded-pill px-3 px-lg-4 fw-bold" style="font-size: 0.85rem;" data-bs-toggle="modal" data-bs-target="#loginModal">
+                                 Đăng nhập
+                             </button>
                         </th:block>
 
                         <th:block th:if="${session.logInUser != null}">
                             <a th:if="${session.logInUser.role == 'ADMIN'}" th:href="@{/admin}" 
-                               class="btn btn-danger btn-sm rounded-pill px-3 fw-bold me-3">QUẢN TRỊ</a>
+                            class="btn btn-danger d-flex align-items-center justify-content-center me-3 shadow-sm" 
+                            title="Quản trị hệ thống" 
+                            style="width: 35px; height: 35px; border-radius: 50%; padding: 0; transition: 0.2s;">
+                                <i class="fas fa-cog"></i>
+                            </a>
                             
                             <a th:href="@{'/profile/' + ${session.logInUser.username}}" class="d-flex align-items-center text-white fw-bold text-decoration-none">
-                                
                                 <img th:if="${session.logInUser.avatar != null}" 
                                      th:src="@{'/uploads/avatars/' + ${session.logInUser.avatar}}" 
-                                     class="rounded-circle me-2 shadow-sm" 
+                                     class="rounded-circle shadow-sm" 
                                      style="width: 35px; height: 35px; object-fit: cover; border: 1px solid #444;" 
                                      alt="Avatar">
                                      
                                 <div th:if="${session.logInUser.avatar == null}" 
-                                     class="rounded-circle me-2 d-flex align-items-center justify-content-center shadow-sm" 
+                                     class="rounded-circle d-flex align-items-center justify-content-center shadow-sm" 
                                      style="width: 35px; height: 35px; background-color: #000; border: 1px solid #444;">
                                      <i class="fas fa-user text-secondary" style="font-size: 0.9rem;"></i>
                                 </div>
-
-                                <span th:text="${session.logInUser.username}"></span>
+                                <span class="ms-2 d-none d-sm-inline" th:text="${session.logInUser.username}"></span>
                             </a>
 
-                            <div class="d-flex flex-column align-items-center justify-content-center ms-3" id="icon-column" style="gap: 8px; margin-top: 2px;">
+                            <div class="d-flex flex-row align-items-center justify-content-center ms-2 ms-md-3" id="icon-column" style="gap: 12px; margin-top: 0;">
                             
                                 <div class="dropdown d-flex justify-content-center" id="inapp-notification-center" style="width: 24px; height: 20px; align-items: center;">
                                     <a class="text-secondary position-relative d-flex justify-content-center align-items-center w-100 h-100" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 1.1rem; text-decoration: none; transition: 0.2s;" onmouseover="this.classList.remove('text-secondary'); this.classList.add('text-white');" onmouseout="this.classList.remove('text-white'); this.classList.add('text-secondary');">
@@ -224,7 +255,7 @@
                                         <span id="notif-badge" class="position-absolute badge rounded-pill bg-danger border border-dark shadow-sm" style="font-size: 0.55rem; top: -6px; right: -8px; display: none; padding: 0.25em 0.4em;">0</span>
                                     </a>
 
-                                    <ul class="dropdown-menu dropdown-menu-end p-0 shadow-lg" style="width: 350px; background-color: #222; border: 1px solid #444; border-radius: 12px; max-height: 450px; overflow-y: auto; overflow-x: hidden; margin-top: 15px;">
+                                    <ul class="dropdown-menu dropdown-menu-end p-0 shadow-lg" style="width: 350px; max-width: 90vw; background-color: #222; border: 1px solid #444; border-radius: 12px; max-height: 450px; overflow-y: auto; overflow-x: hidden; margin-top: 15px;">
                                         <li class="p-3 text-white fw-bold border-bottom border-dark d-flex justify-content-between align-items-center sticky-top" style="background: #222; z-index: 10;">
                                             <span class="fs-6">Thông báo</span>
                                             <a href="#" onclick="markAllAsRead(event)" class="text-fm-green" style="font-size: 0.8rem; text-decoration: none;"><i class="fas fa-check-double"></i> Đánh dấu đã đọc</a>
@@ -244,9 +275,32 @@
                             </div>
                         </th:block>
                     </div>
+
+                    <button class="navbar-toggler ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#pesocNavbar" aria-controls="pesocNavbar" aria-expanded="false" aria-label="Toggle navigation" style="border: 1px solid #333; box-shadow: none; padding: 4px 8px;">
+                        <span class="navbar-toggler-icon" style="width: 1.2em; height: 1.2em;"></span>
+                    </button>
+                </div>
+
+                <div class="collapse navbar-collapse" id="pesocNavbar">
+                    <div class="search-wrapper ms-lg-4 mt-3 mt-lg-0">
+                        <div class="search-container">
+                            <i class="fas fa-search text-secondary"></i>
+                            <input class="form-control search-input" type="text" id="quick-search" placeholder="Tìm kiếm tài khoản, giải đấu, #hashtag..." autocomplete="off">
+                        </div>
+                        <div id="search-results"></div>
+                    </div>
+                    
+                    <ul class="navbar-nav flex-lg-grow-1 justify-content-lg-evenly gap-2 mt-3 mt-lg-0">
+                        <li class="nav-item"><a class="nav-link" th:href="@{/elo-board}">BXH Elo</a></li>
+                        <li class="nav-item"><a class="nav-link" th:href="@{/upcoming-matches}">Lịch thi đấu</a></li>
+                        <li class="nav-item"><a class="nav-link" th:href="@{/tournaments}">Giải đấu</a></li>
+                        <li class="nav-item"><a class="nav-link" th:href="@{/news}">Tin tức</a></li>
+                        <li class="nav-item"><a class="nav-link" th:href="@{/about-us}">Về chúng tôi</a></li>
+                    </ul>
                 </div>
             </div>
-        </nav> <div th:if="${message}" class="container mt-4 mb-2">
+        </nav>
+        <div th:if="${message}" class="container mt-4 mb-2">
             <div class="alert alert-dismissible fade show text-white fw-bold shadow-sm" 
                  th:style="${#strings.contains(message, 'Lỗi')} ? 'background-color: #2c1619; border: 1px solid #dc3545;' : 'background-color: #14281d; border: 1px solid #198754;'" 
                  role="alert" style="border-radius: 10px;">
