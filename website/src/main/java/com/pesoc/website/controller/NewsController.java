@@ -2,7 +2,6 @@ package com.pesoc.website.controller;
 
 import java.util.HashMap;
 import java.util.Map;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Controller;
@@ -20,16 +19,19 @@ import com.pesoc.website.model.User;
 import com.pesoc.website.repository.ArticleRepository;
 import com.pesoc.website.repository.CommentRepository;
 import com.pesoc.website.repository.TagRepository;
+import com.pesoc.website.repository.UserRepository;
+import com.pesoc.website.service.FirebaseService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-
 
 @Controller
 public class NewsController {
     @Autowired private ArticleRepository articleRepository;
     @Autowired private CommentRepository commentRepository;
     @Autowired private TagRepository tagRepository;
+    @Autowired private FirebaseService firebaseService;
+    @Autowired private UserRepository userRepository;
 
     // Trang danh sách tin tức
     @GetMapping("/news")
@@ -50,12 +52,10 @@ public class NewsController {
         return "news-detail";
     }
 
-    // Xử lý gửi bình luận
-    // Thay thế hàm postComment cũ bằng hàm này:
     @PostMapping("/news/{id}/comment")
     public String postComment(@PathVariable Long id, 
                               @RequestParam String content, 
-                              @RequestParam(required = false) Long parentId, // Thêm tham số này
+                              @RequestParam(required = false) Long parentId, 
                               HttpSession session, 
                               jakarta.servlet.http.HttpServletRequest request) {
         
@@ -70,18 +70,95 @@ public class NewsController {
             comment.setArticle(article);
             comment.setCreatedAt(java.time.LocalDateTime.now());
             
-            // NẾU CÓ PARENT ID -> GÁN ĐÂY LÀ BÌNH LUẬN TRẢ LỜI
+            // Xử lý gắn cha - con cho comment
+            Comment parent = null;
             if (parentId != null) {
-                Comment parent = commentRepository.findById(parentId).orElse(null);
+                parent = commentRepository.findById(parentId).orElse(null);
                 if (parent != null) {
                     comment.setParentComment(parent);
                 }
             }
             
             commentRepository.save(comment);
+            
+            // --- QUÉT CÁC TÊN BỊ TAG TRONG Ô NHẬP ĐỂ LÀM BỘ LỌC ---
+            String authorUsername = (article.getAuthor() != null) ? article.getAuthor().getUsername() : null;
+            boolean isTagAll = false;
+            java.util.Set<String> mentionedUsernames = new java.util.HashSet<>();
+
+            try {
+                java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("@([a-zA-Z0-9_]+)");
+                java.util.regex.Matcher matcher = pattern.matcher(content); 
+                while (matcher.find()) {
+                    mentionedUsernames.add(matcher.group(1)); 
+                }
+                isTagAll = mentionedUsernames.stream().anyMatch(name -> name.equalsIgnoreCase("all"));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            // --- XỬ LÝ PHÂN LUỒNG BẮN THÔNG BÁO THÔNG MINH ---
+            try {
+                if (isTagAll) {
+                    // NẾU CÓ @all -> Bắn phát một cho cả server (ai cũng nhận được)
+                    firebaseService.sendToAllUsers(
+                        loggedInUser.getUsername(),
+                        "Thông báo diện rộng! 📢",
+                        loggedInUser.getUsername() + " vừa nhắc đến tất cả mọi người trong một bình luận: \"" + content + "\"", "/news/" + id
+                    );
+                } else {
+                    if (parentId != null) {
+                        // =========================================================
+                        // TRƯỜNG HỢP 1: LÀ BÌNH LUẬN PHẢN HỒI (Tầng 2, Tầng 3...)
+                        // =========================================================
+                        
+                        // BẢO HIỂM: Nếu sếp lỡ tay xóa chữ @tag trong ô nhập, hệ thống tự động lôi chủ nhân của comment cha ra để gửi.
+                        if (mentionedUsernames.isEmpty() && parent != null && parent.getUser() != null) {
+                            mentionedUsernames.add(parent.getUser().getUsername());
+                        }
+
+                        // Bắn thông báo "ĐÃ TRẢ LỜI" cho những người bị tag trong ô reply
+                        for (String uname : mentionedUsernames) {
+                            if (userRepository.findByUsername(uname) != null && !uname.equals(loggedInUser.getUsername())) {
+                                firebaseService.sendToUser(
+                                    uname, 
+                                    "Phản hồi mới! 💬", 
+                                    loggedInUser.getUsername() + " đã trả lời bình luận của bạn: \"" + content + "\"", "/news/" + id
+                                );
+                            }
+                        }
+                    } else {
+                        // =========================================================
+                        // TRƯỜNG HỢP 2: LÀ BÌNH LUẬN GỐC (Tầng 1)
+                        // =========================================================
+                        
+                        // a) Bắn cho Tác giả bài viết trước
+                        if (authorUsername != null && !authorUsername.equals(loggedInUser.getUsername())) {
+                            mentionedUsernames.remove(authorUsername); // Xóa khỏi danh sách tag để tránh bị bắn chuông 2 lần
+                            firebaseService.sendToUser(
+                                authorUsername, 
+                                "Bình luận mới! 💬", 
+                                loggedInUser.getUsername() + " vừa bình luận vào bài viết của bạn: \"" + content + "\"", "/news/" + id
+                            );
+                        }
+                        
+                        // b) Bắn cho những người bị tag lẻ tẻ trong bình luận gốc (Nhắc tên)
+                        for (String uname : mentionedUsernames) {
+                            if (userRepository.findByUsername(uname) != null && !uname.equals(loggedInUser.getUsername())) {
+                                firebaseService.sendToUser(
+                                    uname, 
+                                    "Bạn được nhắc tên! 🏷️", 
+                                    loggedInUser.getUsername() + " vừa nhắc đến bạn trong một bình luận: \"" + content + "\"", "/news/" + id
+                                );
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
         
-        // Tải lại trang hiện tại
         String referer = request.getHeader("Referer");
         return "redirect:" + referer;
     }
@@ -184,6 +261,15 @@ public class NewsController {
 
         // Lưu toàn bộ Article (bao gồm cả thumbnail đã set) vào DB
         articleRepository.save(article);
+
+        // --- ĐOẠN CODE MỚI: XỬ LÝ 2 TRONG 1 ---
+        // 1. Báo cho những người đang "bật chuông" theo dõi tác giả này
+        firebaseService.sendToSubscribers(
+            loggedInUser.getUsername(), 
+            "PLAYER", 
+            "Bài viết mới từ người bật thông báo! 📝", 
+            loggedInUser.getUsername() + " vừa đăng bài viết mới: " + title, "/news/" + article.getId()
+        );
         
         return "redirect:/news";
     }

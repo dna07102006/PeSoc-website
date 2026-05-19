@@ -42,4 +42,6 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
 
     @Query("SELECT m FROM Match m WHERE (m.player1 = :user OR m.player2 = :user) AND m.upcoming = false")
     Page<Match> findCompletedMatchesByUser(@Param("user") User user, Pageable pageable);
+
+    boolean existsByTournamentAndPhaseName(Tournament tournament, String phaseName);
 }

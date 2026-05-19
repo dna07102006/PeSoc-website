@@ -10,6 +10,8 @@ import jakarta.servlet.http.HttpServletResponse; // Cần cái này để gửi/
 import jakarta.servlet.http.HttpSession;
 import com.pesoc.website.model.User;
 import com.pesoc.website.service.AuthService;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @Controller
 public class AuthController {
@@ -32,23 +34,30 @@ public class AuthController {
         if(user != null){
             session.setAttribute("logInUser", user);
             
-            // 🌟 PHÁT THẺ VIP NẾU CÓ TICK "GHI NHỚ" 🌟
+            // 🌟 PHÁT THẺ VIP NẾU CÓ TICK "GHI NHỚ" (ĐÃ FIX LỖI 500 KHOẢNG TRẮNG / CHỮ CÓ DẤU)
             if (rememberMe != null) {
-                Cookie cookie = new Cookie("peSoc_remember", user.getUsername());
-                cookie.setMaxAge(7 * 24 * 60 * 60); // Sống 7 ngày (tính bằng giây)
-                cookie.setPath("/"); // Có tác dụng trên mọi trang của PeSoc
-                response.addCookie(cookie); // Nhét vào túi người dùng
+                try {
+                    // Mã hóa username thành chuỗi an toàn mã ASCII (VD: Hoàng Đức -> Hoa%CC%80ng%20%Đu%CC%81c)
+                    String encodedUsername = URLEncoder.encode(user.getUsername(), StandardCharsets.UTF_8.name());
+                    
+                    Cookie cookie = new Cookie("peSoc_remember", encodedUsername);
+                    cookie.setMaxAge(7 * 24 * 60 * 60); // Sống 7 ngày (tính bằng giây)
+                    cookie.setPath("/"); // Có tác dụng trên mọi trang của PeSoc
+                    response.addCookie(cookie); // Nhét vào túi người dùng an toàn 100%
+                } catch (Exception e) {
+                    System.out.println("❌ Lỗi mã hóa Cookie: " + e.getMessage());
+                }
             }
             
             if("ADMIN".equals(user.getRole())){
-                ra.addAttribute("message", "Chào mừng Admin!");
+                ra.addFlashAttribute("message", "Chào mừng Admin!");
                 return "redirect:" + referer;
             }
-            ra.addAttribute("message", "Đăng nhập thành công!");
+            ra.addFlashAttribute("message", "Đăng nhập thành công!");
             return "redirect:" + referer;
         }
 
-        ra.addAttribute("message", "Lỗi: Sai tên đăng nhập!");
+        ra.addFlashAttribute("message", "Lỗi: Sai tên đăng nhập hoặc mật khẩu!");
         return "redirect:" + referer;
     }
 

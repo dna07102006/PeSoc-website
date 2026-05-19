@@ -12,6 +12,7 @@ import com.pesoc.website.model.Tournament;
 import com.pesoc.website.model.TournamentRanking;
 import com.pesoc.website.model.User;
 import com.pesoc.website.repository.MatchRepository;
+import com.pesoc.website.repository.SubscriptionRepository;
 import com.pesoc.website.repository.TournamentRankingRepository;
 import com.pesoc.website.repository.TournamentRepository;
 import com.pesoc.website.repository.UserRepository;
@@ -40,9 +41,11 @@ public class TournamentDetailController {
     private UserRepository userRepository;
     @Autowired
     private TournamentDetailService tournamentDetailService; 
+    @Autowired
+    private SubscriptionRepository subscriptionRepository;
 
     @GetMapping("/tournament-detail/{name}")
-    public String tournamentDetail(@PathVariable("name") String name, Model model){
+    public String tournamentDetail(@PathVariable("name") String name, Model model, HttpSession session){
         Tournament tournament = tournamentRepository.findByName(name);
         if (tournament == null){
             return "redirect:/home";
@@ -105,6 +108,17 @@ public class TournamentDetailController {
         model.addAttribute("topCleanSheets", topStats.get("topCleanSheets"));
         model.addAttribute("topConceded", topStats.get("topConceded"));
         
+        User logInUser = (User) session.getAttribute("logInUser");
+        boolean isSubscribed = false;
+        if (logInUser != null) {
+            // Tìm xem ông logged in này đã bấm chuông cái giải đấu này chưa
+            isSubscribed = subscriptionRepository.findByUserIdAndTargetIdAndTargetType(
+                logInUser.getId(), name, "TOURNAMENT"
+            ).isPresent();
+        }
+
+        // 🌟 Đẩy biến sang cho Thymeleaf giải đấu nhận diện
+        model.addAttribute("isSubscribed", isSubscribed);
         return "tournament-detail"; // Dòng cũ của sếp
     }
     

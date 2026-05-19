@@ -121,12 +121,6 @@
     <div th:replace="~{fragments/header :: navbar}"></div>
     
     <div class="wide-container">
-        <div th:if="${message != null}" class="alert alert-custom alert-dismissible fade show" 
-             th:classappend="${#strings.containsIgnoreCase(message, 'Lỗi')} ? 'bg-danger text-white' : 'bg-dark text-fm-green border border-success'">
-            <span th:text="${message}"></span>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
-        </div>
-
         <div th:if="${session.logInUser != null and session.logInUser.role == 'ADMIN'}" class="admin-panel">
             <div class="admin-panel-title"><i class="fas fa-shield-alt"></i> Bảng điều khiển quản trị viên</div>
             <div class="admin-grid">
@@ -148,8 +142,18 @@
                         <i th:if="${tournament.banner == null}" class="fas fa-trophy"></i>
                     </div>
                     <div class="td-info">
-                        <h1 th:text="${tournament.name}"></h1>
-                        
+                        <div class="d-flex align-items-center gap-3 mb-2">
+                            <h1 th:text="${tournament.name}" class="mb-0"></h1>
+                            
+                            <button th:class="${isSubscribed == true} ? 'btn btn-warning text-dark btn-sm rounded-circle d-flex align-items-center justify-content-center' : 'btn btn-outline-warning btn-sm rounded-circle d-flex align-items-center justify-content-center'"
+                                    th:data-target-id="${tournament.name}"
+                                    data-target-type="TOURNAMENT"
+                                    onclick="toggleBell(this)"
+                                    title="Bật/Tắt thông báo giải đấu này"
+                                    style="width: 32px; height: 32px; border-width: 2px; box-shadow: none; transition: all 0.2s ease;">
+                                <i th:class="${isSubscribed == true} ? 'fas fa-bell' : 'far fa-bell'" style="font-size: 1rem;"></i>
+                            </button>
+                        </div>
                         <div class="td-meta mb-2">
                             <span class="badge-status" th:classappend="${!tournament.opening} ? 'text-danger' : 'text-white'">
                                 <i class="fas fa-circle dot-opening" th:if="${tournament.opening}"></i>
@@ -500,7 +504,9 @@
                             </div>
                         </div>
                         <div class="modal-footer border-0">
-                            <button type="submit" class="btn btn-info btn-submit text-dark">THÊM VÀO BẢNG</button>
+                            <button type="submit" class="btn btn-submit" style="background-color: #8b5cf6 !important; color: #ffffff !important;">
+                                THÊM VÀO BẢNG
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -590,7 +596,7 @@
                 <div class="modal-content">
                     <form th:action="@{|/admin/tournament-detail/${tournament.name}/update-final-rank|}" method="post">
                         <div class="modal-header">
-                            <h5 class="modal-title text-warning">Chốt Danh Hiệu Chung Cuộc</h5>
+                            <h5 class="modal-title">Chốt Danh Hiệu Chung Cuộc</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
@@ -614,7 +620,7 @@
                             </div>
                         </div>
                         <div class="modal-footer border-0">
-                            <button type="submit" class="btn btn-secondary btn-submit">TRAO GIẢI</button>
+                            <button type="submit" class="btn btn-submit" style="background-color: #F5A82F !important; color: #000000 !important; font-weight: 800;">TRAO GIẢI</button>
                         </div>
                     </form>
                 </div>
@@ -649,7 +655,7 @@
                 <div class="modal-content">
                     <form th:action="@{|/admin/tournament-detail/${tournament.name}/sync-titles|}" method="post">
                         <div class="modal-header">
-                            <h5 class="modal-title text-info">Đồng bộ Danh hiệu</h5>
+                            <h5 class="modal-title">Đồng bộ Danh hiệu</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         
@@ -660,7 +666,7 @@
                         </div>
                         
                         <div class="modal-footer border-0">
-                            <button type="submit" class="btn btn-info btn-submit text-dark fw-bold">BẮT ĐẦU ĐỒNG BỘ</button>
+                            <button type="submit" class="btn btn-submit" style="background-color: #0dcaf0 !important; color: #000000 !important; font-weight: 800;">BẮT ĐẦU ĐỒNG BỘ</button>
                         </div>
                     </form>
                 </div>
@@ -705,6 +711,60 @@
                 setTimeout(scrollToNextMatch, 300); // Chờ 0.3s cho UI render xong rồi mới cuộn
             }
         });
+
+        // ==============================================================
+        // --- XỬ LÝ BẬT/TẮT CHUÔNG THÔNG BÁO THỜI TRANG CHUẨN UX ---
+        // ==============================================================
+        function toggleBell(btn) {
+            const targetId = btn.getAttribute('data-target-id');
+            const targetType = btn.getAttribute('data-target-type');
+            const icon = btn.querySelector('i');
+
+            // Kiểm tra trạng thái dựa trên màu nền của nút
+            const isActive = btn.classList.contains('btn-warning');
+            
+            // Đổi luôn giao diện tức thì cho mượt (Optimistic UI)
+            if (isActive) {
+                // Đổi từ BẬT sang TẮT (Vàng đặc -> Viền rỗng)
+                btn.classList.remove('btn-warning', 'text-dark');
+                btn.classList.add('btn-outline-warning');
+                icon.classList.remove('fas');
+                icon.classList.add('far');
+            } else {
+                // Đổi từ TẮT sang BẬT (Viền rỗng -> Vàng đặc)
+                btn.classList.remove('btn-outline-warning');
+                btn.classList.add('btn-warning', 'text-dark');
+                icon.classList.remove('far');
+                icon.classList.add('fas');
+            }
+
+            // Gọi API về Backend
+            fetch(`/api/notifications/toggle-bell?targetId=${encodeURIComponent(targetId)}&targetType=${encodeURIComponent(targetType)}`, {
+                method: 'POST'
+            })
+            .then(res => {
+                if (res.status === 401) {
+                    // Nếu lỗi chưa đăng nhập -> Trả lại giao diện chuông cũ
+                    if (isActive) {
+                        btn.classList.remove('btn-outline-warning');
+                        btn.classList.add('btn-warning', 'text-dark');
+                        icon.classList.remove('far');
+                        icon.classList.add('fas');
+                    } else {
+                        btn.classList.remove('btn-warning', 'text-dark');
+                        btn.classList.add('btn-outline-warning');
+                        icon.classList.remove('fas');
+                        icon.classList.add('far');
+                    }
+                    
+                    var loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                    loginModal.show();
+                    throw new Error("Chưa đăng nhập");
+                }
+                return res.json();
+            })
+            .catch(err => console.error("Lỗi toggle bell:", err));
+        }
     </script>
 </body>
 </html>

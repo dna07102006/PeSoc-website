@@ -36,6 +36,8 @@ public class TournamentDetailService {
     private UserRepository userRepository;
     @Autowired
     private TournamentRankingRepository rankingRepository;
+    @Autowired
+    private FirebaseService firebaseService;
 
     @Transactional
     public void addMatch(String tName, String p1, String p2, String matchType, String phaseName, Integer roundNumber) {
@@ -50,24 +52,38 @@ public class TournamentDetailService {
             throw new RuntimeException("Một người không thể tự đá với chính mình!");
         }
 
+        // --- 1. XÁC ĐỊNH TÊN VÒNG ĐẤU TRƯỚC ĐỂ ĐI CHECK ---
+        String actualPhaseName = ("GROUP".equals(matchType) && (phaseName == null || phaseName.isEmpty())) 
+            ? "Vòng " + roundNumber 
+            : phaseName;
+
+        // --- 2. KIỂM TRA XEM ĐÂY CÓ PHẢI VÒNG ĐẤU HOÀN TOÀN MỚI KHÔNG ---
+        boolean isNewPhase = false;
+        if (tournament != null) {
+            // Nếu TRƯỚC KHI LƯU mà DB chưa từng có trận nào mang tên phase này -> Đây chính là trận đầu tiên của vòng mới!
+            isNewPhase = !matchRepository.existsByTournamentAndPhaseName(tournament, actualPhaseName);
+        }
+
+        // --- 3. TIẾN HÀNH TẠO VÀ LƯU TRẬN ĐẤU NHƯ CŨ ---
         Match match = new Match();
         match.setTournament(tournament);
         match.setPlayer1(user1);
         match.setPlayer2(user2);
         match.setUpcoming(true);
-        
         match.setMatchType(matchType);
-        
-        if("GROUP".equals(matchType) && phaseName.isEmpty()){
-            match.setPhaseName("Vòng " + roundNumber);
-        } 
-        else{
-            match.setPhaseName(phaseName); 
-        }
-        
+        match.setPhaseName(actualPhaseName); 
         match.setRoundNumber(roundNumber);
-
         matchRepository.save(match);
+
+        // --- 4. CHỈ BẮN THÔNG BÁO NẾU LÀ TRẬN ĐẦU TIÊN CỦA VÒNG MỚI ---
+        if (tournament != null && isNewPhase) {
+            firebaseService.sendToSubscribers(
+                tournament.getName(), 
+                "TOURNAMENT", 
+                "Đã có lịch thi đấu " + actualPhaseName + "! 🗓️", 
+                "Bạn có cuộc hẹn với " + tournament.getName() + ": Lịch thi đấu " + actualPhaseName + "!", "/tournament-detail/" + tName
+            );
+        }
     }
 
     @Transactional
@@ -118,10 +134,57 @@ public class TournamentDetailService {
 
     @Transactional
     public void updateFinalRank(Long rankingId, Integer rank) {
-        TournamentRanking ranking = rankingRepository.findById(rankingId).orElseThrow(() -> new RuntimeException("Không tìm thấy dữ liệu xếp hạng!"));
+        TournamentRanking ranking = rankingRepository.findById(rankingId)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy dữ liệu xếp hạng!")); 
         
-        ranking.setFinalRank(rank);
-        rankingRepository.save(ranking);
+        ranking.setFinalRank(rank); 
+        rankingRepository.save(ranking); 
+
+        if (rank != null && rank == 1) {
+            Tournament tournament = ranking.getTournament();
+            String tName = tournament.getName();
+            String championName = ranking.getUser().getUsername();
+
+            List<TournamentRanking> allRankings = rankingRepository.findByTournamentOrderByPointsDescDifferenceDescGoalsDesc(tournament);
+            
+            List<String> topScorers = new java.util.ArrayList<>();
+            List<String> goldenGloves = new java.util.ArrayList<>();
+
+            for (TournamentRanking r : allRankings) {
+                if (Boolean.TRUE.equals(r.isTopScorer())) {
+                    topScorers.add(r.getUser().getUsername());
+                }
+                if (Boolean.TRUE.equals(r.isGoldenGlove())) {
+                    goldenGloves.add(r.getUser().getUsername());
+                }
+            }
+
+            String vualuoiStr = topScorers.isEmpty() ? "Chưa rõ" : String.join(", ", topScorers);
+            String gangtayStr = goldenGloves.isEmpty() ? "Chưa rõ" : String.join(", ", goldenGloves);
+
+            // Phát loa diện rộng tới toàn bộ anh em bật chuông theo dõi giải này
+            firebaseService.sendToSubscribers(
+                tName, 
+                "TOURNAMENT", 
+                "NHÀ VÔ ĐỊCH" + tournament.getName(), 
+                "[" + championName + "]", 
+                "/tournament-detail/" + tName
+            );
+            firebaseService.sendToSubscribers(
+                tName, 
+                "TOURNAMENT", 
+                "VUA PHÁ LƯỚI" + tournament.getName(), 
+                "[" + vualuoiStr + "]", 
+                "/tournament-detail/" + tName
+            );
+            firebaseService.sendToSubscribers(
+                tName, 
+                "TOURNAMENT", 
+                "GĂNG TAY VÀNG" + tournament.getName(), 
+                "[" + gangtayStr + "]", 
+                "/tournament-detail/" + tName
+            );
+        }
     }
 
     @Transactional

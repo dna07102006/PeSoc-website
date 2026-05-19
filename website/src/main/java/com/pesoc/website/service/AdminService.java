@@ -21,6 +21,8 @@ public class AdminService {
     private UserRepository userRepository;
     @Autowired
     private TournamentRankingRepository rankingRepository;
+    @Autowired
+    private FirebaseService firebaseService;
 
     public Pair<Integer, Integer> updateElo(Integer elo1, Integer elo2, String res, Integer kFactor, int pen){
         double Qa = Math.pow(10, elo1 / 400.0);
@@ -186,7 +188,28 @@ public class AdminService {
             kFactor = 2;
 
             if("GROUP".equals(match.getMatchType())){
-                updateTournamentRanking(match, score1, score2);
+                updateTournamentRanking(match, score1, score2); 
+            }
+
+            // ==========================================
+            // 🌟 QUÉT CHO MỌI VÒNG ĐẤU (Group, Tứ kết, Bán kết...)
+            // ==========================================
+            String currentPhase = match.getPhaseName();
+            boolean isPhaseFinished = matchRepository.findByTournament(match.getTournament())
+                .stream()
+                // Lọc tất cả các trận có CÙNG TÊN VÒNG (ví dụ: cùng là "Tứ kết")
+                .filter(m -> currentPhase != null && currentPhase.equals(m.getPhaseName()))
+                // Kiểm tra xem tất cả các trận đó đã đá xong hết chưa
+                .allMatch(m -> !m.isUpcoming()); 
+            
+            if (isPhaseFinished) {
+                firebaseService.sendToSubscribers(
+                    match.getTournament().getName(),
+                    "TOURNAMENT",
+                    currentPhase + " đã khép lại! 🏁",
+                    "Bạn có cuộc gọi nhỡ từ " + match.getTournament().getName() + ": vừa hoàn tất các trận đấu của " + currentPhase + "!",
+                    "/tournament-detail/" + match.getTournament().getName()
+                );
             }
         }
 
@@ -232,6 +255,21 @@ public class AdminService {
 
         userRepository.save(match.getPlayer1());
         userRepository.save(match.getPlayer2());
+
+        // --- ĐOẠN CODE MỚI THAY THẾ: GỘP FAN BẮN 1 PHÁT DUY NHẤT ---
+        String p1Name = match.getPlayer1().getUsername(); //
+        String p2Name = match.getPlayer2().getUsername(); //
+        String matchUrl = "/match-detail/" + MatchID; //
+        String msgBody = p1Name + " " + score1 + " - " + score2 + " " + p2Name; //
+
+        // Gọi hàm thông minh để lọc trùng fan trước khi bắn tin
+        firebaseService.sendToMatchPlayersSubscribers(
+            p1Name, 
+            p2Name, 
+            "Full time! ⚽", 
+            msgBody, 
+            matchUrl
+        );
     }
 
     public void createMatch(String player1, String player2){

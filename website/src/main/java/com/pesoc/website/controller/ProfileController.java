@@ -32,6 +32,7 @@ import com.pesoc.website.model.User;
 import com.pesoc.website.repository.ArticleRepository;
 import com.pesoc.website.repository.EloHistoryRepository;
 import com.pesoc.website.repository.MatchRepository;
+import com.pesoc.website.repository.SubscriptionRepository;
 import com.pesoc.website.repository.TournamentRankingRepository;
 import com.pesoc.website.service.ProfileService;
 import jakarta.servlet.http.HttpSession;
@@ -55,6 +56,8 @@ public class ProfileController {
     private ArticleRepository articleRepository;
     @Autowired
     private EloHistoryRepository eloHistoryRepository;
+    @Autowired 
+    private SubscriptionRepository subscriptionRepository;
 
     ProfileController(UserRepository userRepository) {
         this.userRepository = userRepository;
@@ -166,6 +169,18 @@ public class ProfileController {
         Pageable pageable = PageRequest.of(0, 3, Sort.by("createdAt").descending());
         Page<Article> authorArticles = articleRepository.findByAuthor(userRepository.findByUsername(username), pageable);
         model.addAttribute("authorArticles", authorArticles);
+
+        User logInUser = (User) session.getAttribute("logInUser");
+        boolean isSubscribed = false;
+
+        if (logInUser != null) {
+            // Tìm xem trong DB ông logged in này đã sub ông chủ profile này chưa
+            isSubscribed = subscriptionRepository.findByUserIdAndTargetIdAndTargetType(
+                logInUser.getId(), username, "PLAYER"
+            ).isPresent();
+        }
+        model.addAttribute("isSubscribed", isSubscribed);
+        
         return "profile";
     }
 

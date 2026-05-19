@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PéSoc</title>
     <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    
+    <link rel="apple-touch-icon" href="/favicon192.png">
+    
+    <link rel="manifest" href="/manifest.json">
+    
+    <meta name="theme-color" content="#1a1a1a">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <style>
@@ -216,7 +222,16 @@
                     </div>
                 </div>
             </div>
-        </nav>
+        </nav> <div th:if="${message}" class="container mt-4 mb-2">
+            <div class="alert alert-dismissible fade show text-white fw-bold shadow-sm" 
+                 th:style="${#strings.contains(message, 'Lỗi')} ? 'background-color: #2c1619; border: 1px solid #dc3545;' : 'background-color: #14281d; border: 1px solid #198754;'" 
+                 role="alert" style="border-radius: 10px;">
+                
+                <i class="fas me-2" th:classappend="${#strings.contains(message, 'Lỗi')} ? 'fa-exclamation-triangle text-danger' : 'fa-check-circle text-success'"></i>
+                <span th:text="${message}"></span>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close" style="box-shadow: none;"></button>
+            </div>
+        </div>
 
         <div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
@@ -339,7 +354,240 @@
     </div>
 
     <div th:fragment="scripts">
+        <div id="pesoc-auth-status" th:data-logged-in="${session.logInUser != null}" style="display:none;"></div>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        
+        <script type="module">
+            import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+            import { getMessaging, getToken, onMessage, deleteToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
+
+            const firebaseConfig = {
+                apiKey: "AIzaSyCR8LKoUZ7JY7hPf7LQsVwF1mS-iCsZd98",
+                authDomain: "pesoc-e16d0.firebaseapp.com",
+                projectId: "pesoc-e16d0",
+                storageBucket: "pesoc-e16d0.firebasestorage.app",
+                messagingSenderId: "1009827135409",
+                appId: "1:1009827135409:web:5ed31c94785e71b4438790",
+                measurementId: "G-4720672Q56"
+            };
+
+            const app = initializeApp(firebaseConfig);
+            const messaging = getMessaging(app);
+
+            function registerFirebaseToken() {
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('/firebase-messaging-sw.js')
+                    .then(registration => navigator.serviceWorker.ready)
+                    .then(readyRegistration => {
+                        return getToken(messaging, { 
+                            vapidKey: 'BP1-yHF21w-UXwhiSKbTN8R7l1KrdTFnTdDKqZjWaenq24bR1gXLfqA_-NJ06TNU8GnUIwJFjJQ-Buo3ciXnRRo',
+                            serviceWorkerRegistration: readyRegistration 
+                        });
+                    })
+                    .then(currentToken => {
+                        if (currentToken) {
+                            localStorage.setItem('pesoc_fcm_token', currentToken);
+                            fetch('/api/notifications/save-token', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ token: currentToken })
+                            });
+                        }
+                    }).catch(console.error);
+                }
+            }
+
+            const authStatusDiv = document.getElementById('pesoc-auth-status');
+            const isUserLoggedIn = authStatusDiv && authStatusDiv.getAttribute('data-logged-in') === 'true';
+            
+            if (isUserLoggedIn) {
+                const hasLocalToken = localStorage.getItem('pesoc_fcm_token');
+                const authWrapper = document.querySelector('.auth-wrapper');
+                const permModal = new bootstrap.Modal(document.getElementById('permissionModal'));
+
+                // 🌟 HÀM INJECT CHUÔNG ĐẲNG CẤP: Ép xếp dọc thẳng hàng dưới kí hiệu đăng xuất
+                function injectNavbarBell(type) {
+                    if (!authWrapper || document.getElementById('nav-push-bell')) return;
+                    
+                    const logoutBtn = authWrapper.querySelector('.btn-logout');
+                    if (logoutBtn) {
+                        // 1. Tạo một hộp chứa flex-column để ép các phần tử xếp hàng dọc căn giữa
+                        const verticalContainer = document.createElement('div');
+                        verticalContainer.className = 'd-inline-flex flex-column align-items-center justify-content-center';
+                        verticalContainer.style.marginLeft = '15px'; // Khoảng cách đều với Avatar/Tên bên trái
+                        verticalContainer.style.gap = '5px';        // Khoảng cách chiều dọc giữa icon logout và chuông
+                        verticalContainer.style.verticalAlign = 'middle';
+
+                        // 2. Lôi nút logout cũ vào trong hộp xếp dọc này
+                        logoutBtn.parentNode.insertBefore(verticalContainer, logoutBtn);
+                        verticalContainer.appendChild(logoutBtn);
+                        
+                        // Xóa cái margin cũ của nút logout đi để nó không bị lệch tâm dọc
+                        logoutBtn.style.marginLeft = '0';
+
+                        // 3. Tạo chuông HTML borderless siêu thanh thoát
+                        let bellHtml = '';
+                        if (type === 'denied') {
+                            bellHtml = `<a id="nav-push-bell" href="#" class="text-danger d-inline-flex align-items-center" 
+                                           style="font-size: 0.95rem; text-decoration: none; line-height: 1; transition: 0.2s;" 
+                                           title="Thông báo bị trình duyệt chặn! Click để xem cách mở">
+                                            <i class="fas fa-bell-slash"></i>
+                                        </a>`;
+                        } else {
+                            bellHtml = `<a id="nav-push-bell" href="#" class="text-warning d-inline-flex align-items-center" 
+                                           style="font-size: 0.95rem; text-decoration: none; line-height: 1; transition: 0.2s;" 
+                                           title="Cài đặt thông báo ứng dụng PeSoc">
+                                            <i class="far fa-bell"></i>
+                                        </a>`;
+                        }
+
+                        // 4. Bắn cái chuông vào nằm ngay dưới nút Đăng xuất (trong hộp xếp dọc)
+                        verticalContainer.insertAdjacentHTML('beforeend', bellHtml);
+
+                        // Gắn sự kiện click
+                        document.getElementById('nav-push-bell').addEventListener('click', function(e) {
+                            e.preventDefault();
+                            setupModalContent();
+                            permModal.show();
+                        });
+                    }
+                }
+
+                function setupModalContent() {
+                    const titleEl = document.getElementById('modal-perm-title');
+                    const bodyEl = document.getElementById('modal-perm-body');
+                    const btnAccept = document.getElementById('btn-accept-permission');
+                    const btnDeny = document.getElementById('btn-deny-permission');
+
+                    if (Notification.permission === 'denied') {
+                        titleEl.innerHTML = 'Trình duyệt đang chặn thông báo 🔒';
+                        bodyEl.innerHTML = 'Bạn đã lỡ tay chọn "Chặn" thông báo trên trình duyệt mất rồi.<br><br>Để mở lại, sếp vui lòng nhìn lên thanh địa chỉ trình duyệt, bấm vào <b>biểu tượng ổ khóa 🔒</b> (hoặc cài đặt trang web), rồi đổi trạng thái Thông báo thành <b>"Cho phép" (Allow)</b> nhé!';
+                        btnAccept.innerText = 'ĐÃ HIỂU';
+                        btnDeny.style.display = 'none';
+                    } else {
+                        titleEl.innerText = 'Bật thông báo nhé?';
+                        bodyEl.innerText = 'Để PéSoc có thể cập nhật lập tức lịch thi đấu và giải đấu mới nhất!';
+                        btnAccept.innerText = 'CHO PHÉP BẬT THÔNG BÁO';
+                        btnDeny.style.display = 'inline-block';
+                    }
+                }
+
+                // LUỒNG CHECK QUYỀN VÀ HIỂN THỊ MẶC ĐỊNH
+                if (Notification.permission === 'default') {
+                    injectNavbarBell('default');
+                    if (!localStorage.getItem('pesoc_notification_denied')) {
+                        setupModalContent();
+                        permModal.show();
+                    }
+
+                    document.getElementById('btn-accept-permission').addEventListener('click', function() {
+                        if (Notification.permission === 'denied') {
+                            permModal.hide();
+                            return;
+                        }
+                        Notification.requestPermission().then((permission) => {
+                            permModal.hide();
+                            if (permission === 'granted') {
+                                const bell = document.getElementById('nav-push-bell');
+                                if (bell) bell.remove();
+                                registerFirebaseToken();
+                            } else if (permission === 'denied') {
+                                location.reload();
+                            }
+                        });
+                    });
+
+                    document.getElementById('btn-deny-permission').addEventListener('click', function() {
+                        localStorage.setItem('pesoc_notification_denied', 'true');
+                        permModal.hide();
+                    });
+
+                } else if (Notification.permission === 'denied') {
+                    injectNavbarBell('denied');
+                    document.getElementById('btn-accept-permission').addEventListener('click', function() {
+                        permModal.hide();
+                    });
+                } else if (Notification.permission === 'granted') {
+                    registerFirebaseToken();
+                }
+            }
+
+            // LẮNG NGHE LÚC WEB ĐANG MỞ (KHÔI PHỤC URL ĐỂ NHẢY TRANG MƯỢT MÀ)
+            onMessage(messaging, function(payload) {
+                let title = "Thông báo mới";
+                if (payload.notification && payload.notification.title) { title = payload.notification.title; }
+                let body = "";
+                if (payload.notification && payload.notification.body) { body = payload.notification.body; }
+
+                // 🌟 Lấy lại URL từ Backend gửi về
+                let targetUrl = '/home';
+                if (payload.data && payload.data.url) { targetUrl = payload.data.url; }
+                else if (payload.data && payload.data.link) { targetUrl = payload.data.link; }
+
+                // 🌟 Đóng gói URL vào data để gửi cho hộp thông báo
+                const options = { 
+                    body: body, 
+                    icon: '/favicon192.png',
+                    data: { url: targetUrl } 
+                };
+                
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.ready.then(function(registration) {
+                        registration.showNotification(title, options);
+                    });
+                }
+            });
+
+            // LOGOUT
+            document.addEventListener('DOMContentLoaded', function() {
+                const logoutBtn = document.querySelector('.btn-logout');
+                if (logoutBtn) {
+                    logoutBtn.addEventListener('click', async function(e) {
+                        e.preventDefault(); 
+                        const logoutUrl = this.getAttribute('href');
+                        const currentToken = localStorage.getItem('pesoc_fcm_token');
+
+                        if (currentToken) {
+                            try {
+                                await deleteToken(messaging); 
+                                await fetch('/api/notifications/delete-token', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ token: currentToken })
+                                });
+                            } catch (err) {}
+                            localStorage.removeItem('pesoc_fcm_token'); 
+                        }
+                        localStorage.removeItem('pesoc_notification_denied');
+                        window.location.href = logoutUrl; 
+                    });
+                }
+            });
+        </script>
+
+        <div class="modal fade" id="permissionModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content" style="background-color: #1a1a1a; border: 1px solid #333; border-radius: 16px;">
+                    <div class="modal-header border-0 pb-0 d-flex justify-content-end">
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" style="box-shadow: none;"></button>
+                    </div>
+                    <div class="modal-body p-4 pt-0 text-center">
+                        <div class="mb-3">
+                            <i class="fas fa-bell text-warning" style="font-size: 3.5rem;"></i>
+                        </div>
+                        <h4 class="fw-bold text-white mb-3" id="modal-perm-title">Bật thông báo nhé?</h4>
+                        <p class="text-secondary mb-4" id="modal-perm-body" style="font-size: 0.95rem;">Để PéSoc có thể cập nhật lập tức lịch thi đấu và giải đấu mới nhất!</p>
+                        
+                        <button id="btn-accept-permission" type="button" class="btn btn-warning w-100 fw-bold py-2 rounded-pill shadow-sm mb-2">
+                            CHO PHÉP BẬT THÔNG BÁO
+                        </button>
+                        <button id="btn-deny-permission" type="button" class="btn btn-outline-secondary w-100 fw-bold py-2 rounded-pill shadow-sm" style="font-size: 0.9rem;">
+                            TỪ CHỐI
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 </html>

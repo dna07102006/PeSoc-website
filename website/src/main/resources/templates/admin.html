@@ -69,14 +69,6 @@
     <div th:replace="~{fragments/header :: navbar}"></div>
 
     <div class="adv2-container">
-        
-        <div th:if="${message != null}" class="alert alert-dismissible fade show mt-2 mb-4" 
-             th:classappend="${#strings.containsIgnoreCase(message, 'Lỗi')} ? 'bg-danger text-white border-0' : 'bg-dark text-fm-green border border-success'" role="alert">
-            <i th:class="${#strings.containsIgnoreCase(message, 'Lỗi')} ? 'fas fa-exclamation-triangle me-2' : 'fas fa-check-circle me-2'"></i> 
-            <span th:text="${message}"></span>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
-        </div>
-
         <div class="adv2-header-card">
             <div class="adv2-banner">
                 <h1>Hệ Thống Quản Trị</h1>

@@ -144,8 +144,20 @@
                     </div>
                 </div>
                 <div class="profile-info">
-                    <h2 th:text="${user.username}"></h2>
-                    <div class="pes-username">
+                    <div class="d-flex align-items-center gap-3">
+                        <h2 th:text="${user.username}" class="mb-0"></h2>
+                        
+                        <button th:if="${!isOwner}" 
+                                th:class="${isSubscribed == true} ? 'btn btn-warning text-dark btn-sm rounded-circle d-flex align-items-center justify-content-center' : 'btn btn-outline-warning btn-sm rounded-circle d-flex align-items-center justify-content-center'"
+                                th:data-target-id="${user.username}"
+                                data-target-type="PLAYER"
+                                onclick="toggleBell(this)"
+                                title="Nhận thông báo khi người này đăng bài hoặc thi đấu"
+                                style="width: 30px; height: 30px; border-width: 2px; box-shadow: none; transition: all 0.2s ease;">
+                            <i th:class="${isSubscribed == true} ? 'fas fa-bell' : 'far fa-bell'" style="font-size: 0.9rem;"></i>
+                        </button>
+                    </div>
+                    <div class="pes-username mt-1">
                         <i class="fas fa-gamepad me-1"></i>
                         Pes Username: <span th:text="${user.pesUsername != null && !user.pesUsername.isEmpty() ? user.pesUsername : 'Chưa cập nhật'}"></span>
                         <i th:if="${isOwner}" class="fas fa-pen ms-2" style="font-size: 0.7rem; cursor: pointer; color: #bbb;" data-bs-toggle="modal" data-bs-target="#pesUsernameModal"></i>
@@ -902,6 +914,60 @@
                     btn.innerText = "Lỗi. Thử lại?";
                     btn.disabled = false;
                 });
+        }
+
+        // ==============================================================
+        // --- XỬ LÝ BẬT/TẮT CHUÔNG THÔNG BÁO THỜI TRANG CHUẨN UX ---
+        // ==============================================================
+        function toggleBell(btn) {
+            const targetId = btn.getAttribute('data-target-id');
+            const targetType = btn.getAttribute('data-target-type');
+            const icon = btn.querySelector('i');
+
+            // Kiểm tra trạng thái dựa trên màu nền của nút
+            const isActive = btn.classList.contains('btn-warning');
+            
+            // Đổi luôn giao diện tức thì cho mượt (Optimistic UI)
+            if (isActive) {
+                // Đổi từ BẬT sang TẮT (Vàng đặc -> Viền rỗng)
+                btn.classList.remove('btn-warning', 'text-dark');
+                btn.classList.add('btn-outline-warning');
+                icon.classList.remove('fas');
+                icon.classList.add('far');
+            } else {
+                // Đổi từ TẮT sang BẬT (Viền rỗng -> Vàng đặc)
+                btn.classList.remove('btn-outline-warning');
+                btn.classList.add('btn-warning', 'text-dark');
+                icon.classList.remove('far');
+                icon.classList.add('fas');
+            }
+
+            // Gọi API về Backend
+            fetch(`/api/notifications/toggle-bell?targetId=${encodeURIComponent(targetId)}&targetType=${encodeURIComponent(targetType)}`, {
+                method: 'POST'
+            })
+            .then(res => {
+                if (res.status === 401) {
+                    // Nếu lỗi chưa đăng nhập -> Trả lại giao diện chuông cũ
+                    if (isActive) {
+                        btn.classList.remove('btn-outline-warning');
+                        btn.classList.add('btn-warning', 'text-dark');
+                        icon.classList.remove('far');
+                        icon.classList.add('fas');
+                    } else {
+                        btn.classList.remove('btn-warning', 'text-dark');
+                        btn.classList.add('btn-outline-warning');
+                        icon.classList.remove('fas');
+                        icon.classList.add('far');
+                    }
+                    
+                    var loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                    loginModal.show();
+                    throw new Error("Chưa đăng nhập");
+                }
+                return res.json();
+            })
+            .catch(err => console.error("Lỗi toggle bell:", err));
         }
     </script>
 </body>
