@@ -16,41 +16,30 @@ const messaging = firebase.messaging();
 
 self.addEventListener('notificationclick', function(event) {
     event.notification.close();
+    
+    // 1. Lấy URL từ thông báo (fallback về /home nếu không tìm thấy)
+    const targetUrl = (event.notification.data && event.notification.data.url) 
+                      ? event.notification.data.url 
+                      : '/home';
 
-    // 1. Trích xuất URL mục tiêu (Chống crash Safari)
-    let targetUrl = '/home';
-    if (event.notification.data) {
-        if (event.notification.data.url) { targetUrl = event.notification.data.url; }
-        else if (event.notification.data.link) { targetUrl = event.notification.data.link; }
-        else if (event.notification.data.FCM_MSG && event.notification.data.FCM_MSG.data && event.notification.data.FCM_MSG.data.url) {
-            targetUrl = event.notification.data.FCM_MSG.data.url;
-        }
-    }
+    // 2. Chuyển đổi URL sang dạng đầy đủ
+    const fullUrl = new URL(targetUrl, self.location.origin).href;
 
-    // 2. Tạo 2 đường link chuẩn bị sẵn
-    let fullTargetUrl = new URL(targetUrl, self.location.origin).href;
-    let homeUrl = new URL('/home', self.location.origin).href;
-
-    // 3. CHIẾN THUẬT RẼ NHÁNH (HYBRID NAVIGATION)
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
-            
-            // TRƯỜNG HỢP A: 🟢 APP ĐANG MỞ (Hoặc đang chạy ngầm)
-            if (clientList.length > 0) {
-                let client = clientList[0];
-                return client.focus().then(function(focusedClient) {
-                    // Vì app đang mở, trình duyệt đủ sức nhảy vào thẳng link chi tiết!
-                    if (focusedClient) { return focusedClient.navigate(fullTargetUrl); } 
-                    else { return client.navigate(fullTargetUrl); }
-                });
-            } 
-            
-            // TRƯỜNG HỢP B: 🔴 APP BỊ TẮT HOÀN TOÀN (KILLED)
-            else {
-                // Nhảy URL sâu hay bị lỗi trên điện thoại, ta ép mở App ở trang Home cho an toàn
-                if (clients.openWindow) {
-                    return clients.openWindow(homeUrl);
+            // Tìm xem có cửa sổ nào của PéSoc đang mở không
+            for (var i = 0; i < clientList.length; i++) {
+                var client = clientList[i];
+                // Nếu tìm thấy cửa sổ đang mở -> Focus vào nó VÀ ép nó nhảy sang URL mới
+                if (client.url && 'focus' in client) {
+                    return client.focus().then(function(focusedClient) {
+                        return focusedClient.navigate(fullUrl);
+                    });
                 }
+            }
+            // Nếu không tìm thấy cửa sổ nào (App đang tắt) -> Mở mới
+            if (clients.openWindow) {
+                return clients.openWindow(fullUrl);
             }
         })
     );

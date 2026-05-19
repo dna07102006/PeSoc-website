@@ -1,7 +1,7 @@
 package com.pesoc.website.service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.util.*;
 import java.lang.Math;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.util.Pair;
@@ -23,6 +23,10 @@ public class AdminService {
     private TournamentRankingRepository rankingRepository;
     @Autowired
     private FirebaseService firebaseService;
+    @Autowired 
+    private SubscriptionRepository subscriptionRepository;
+    @Autowired private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
+    @Autowired private com.pesoc.website.repository.InAppNotificationRepository inAppNotificationRepository;
 
     public Pair<Integer, Integer> updateElo(Integer elo1, Integer elo2, String res, Integer kFactor, int pen){
         double Qa = Math.pow(10, elo1 / 400.0);
@@ -210,6 +214,12 @@ public class AdminService {
                     "Bạn có cuộc gọi nhỡ từ " + match.getTournament().getName() + ": vừa hoàn tất các trận đấu của " + currentPhase + "!",
                     "/tournament-detail/" + match.getTournament().getName()
                 );
+
+                List<Subscription> subs = subscriptionRepository.findByTargetIdAndTargetType(match.getTournament().getName(), "TOURNAMENT");
+                for(Subscription sub : subs){
+                    String subName = sub.getUser().getUsername();
+                    sendInAppNotification(subName, currentPhase + " đã khép lại! 🏁", "Bạn có cuộc gọi nhỡ từ " + match.getTournament().getName() + ": vừa hoàn tất các trận đấu của " + currentPhase + "!", "/tournament-detail/" + match.getTournament().getName());
+                }
             }
         }
 
@@ -270,6 +280,20 @@ public class AdminService {
             msgBody, 
             matchUrl
         );
+
+        List<Subscription> sub1s = subscriptionRepository.findByTargetIdAndTargetType(p1Name, "PLAYER");
+        List<Subscription> sub2s = subscriptionRepository.findByTargetIdAndTargetType(p2Name, "PLAYER");
+
+        Set<String> subs = new HashSet<String>();
+        for(Subscription sub1 : sub1s){
+            subs.add(sub1.getUser().getUsername());
+        }
+        for(Subscription sub2 : sub2s){
+            subs.add(sub2.getUser().getUsername());
+        }
+        for(String sub : subs){
+            sendInAppNotification(sub, "Full time! ⚽", msgBody, matchUrl);
+        }
     }
 
     public void createMatch(String player1, String player2){
@@ -331,5 +355,22 @@ public class AdminService {
         tournament.setOpening(true);
         tournament.setOpenDate(LocalDateTime.now());
         tournamentRepository.save(tournament);
+    }
+
+    private void sendInAppNotification(String receiver, String title, String body, String url) {
+        try {
+            // 1. Lưu lịch sử vào Database để xem lại sau
+            com.pesoc.website.model.InAppNotification notif = new com.pesoc.website.model.InAppNotification();
+            notif.setTitle(title);
+            notif.setBody(body);
+            notif.setUrl(url);
+            notif.setReceiverUsername(receiver);
+            inAppNotificationRepository.save(notif);
+
+            // 2. Bắn WebSocket tới kênh riêng của người nhận (nếu họ đang online)
+            messagingTemplate.convertAndSend("/topic/notifications/" + receiver, notif);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

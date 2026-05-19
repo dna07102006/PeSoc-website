@@ -81,4 +81,49 @@ public class NotificationController {
             return ResponseEntity.ok(Map.of("status", "subscribed", "message", "Đã bật chuông thông báo!"));
         }
     }
+
+    @Autowired
+    private com.pesoc.website.repository.InAppNotificationRepository inAppNotificationRepository;
+
+    // API 1: Lấy danh sách thông báo và số lượng chưa đọc lúc load trang
+    @GetMapping("/inbox")
+    public ResponseEntity<?> getMyInbox(HttpSession session) {
+        User logInUser = (User) session.getAttribute("logInUser");
+        if (logInUser == null) return ResponseEntity.status(401).body("Chưa đăng nhập");
+
+        var list = inAppNotificationRepository.findTop15ByReceiverUsernameOrderByCreatedAtDesc(logInUser.getUsername());
+        long unreadCount = inAppNotificationRepository.countByReceiverUsernameAndIsReadFalse(logInUser.getUsername());
+
+        return ResponseEntity.ok(Map.of("notifications", list, "unreadCount", unreadCount));
+    }
+
+    // API 2: Bấm vào thông báo nào thì đánh dấu thông báo đó đã đọc
+    @PostMapping("/mark-read/{id}")
+    public ResponseEntity<?> markAsRead(@PathVariable Long id, HttpSession session) {
+        User logInUser = (User) session.getAttribute("logInUser");
+        if (logInUser == null) return ResponseEntity.status(401).body("Chưa đăng nhập");
+
+        inAppNotificationRepository.findById(id).ifPresent(notif -> {
+            if (notif.getReceiverUsername().equals(logInUser.getUsername())) {
+                notif.setRead(true);
+                inAppNotificationRepository.save(notif);
+            }
+        });
+        return ResponseEntity.ok("Đã đọc!");
+    }
+
+    @PostMapping("/mark-all-read")
+    public ResponseEntity<?> markAllAsRead(HttpSession session) {
+        User logInUser = (User) session.getAttribute("logInUser");
+        if (logInUser == null) return ResponseEntity.status(401).body("Chưa đăng nhập");
+
+        // Tìm tất cả thông báo chưa đọc và chuyển thành đã đọc
+        var unreadList = inAppNotificationRepository.findByReceiverUsernameAndIsReadFalse(logInUser.getUsername());
+        for (var notif : unreadList) {
+            notif.setRead(true);
+        }
+        inAppNotificationRepository.saveAll(unreadList);
+        
+        return ResponseEntity.ok("Đã dọn dẹp chuông!");
+    }
 }

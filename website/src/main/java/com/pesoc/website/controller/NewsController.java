@@ -1,6 +1,7 @@
 package com.pesoc.website.controller;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -32,6 +33,8 @@ public class NewsController {
     @Autowired private TagRepository tagRepository;
     @Autowired private FirebaseService firebaseService;
     @Autowired private UserRepository userRepository;
+    @Autowired private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
+    @Autowired private com.pesoc.website.repository.InAppNotificationRepository inAppNotificationRepository;
 
     // Trang danh sách tin tức
     @GetMapping("/news")
@@ -96,16 +99,25 @@ public class NewsController {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-
+            
             // --- XỬ LÝ PHÂN LUỒNG BẮN THÔNG BÁO THÔNG MINH ---
             try {
                 if (isTagAll) {
-                    // NẾU CÓ @all -> Bắn phát một cho cả server (ai cũng nhận được)
+                    // 1. Firebase (Web Push cũ)
                     firebaseService.sendToAllUsers(
                         loggedInUser.getUsername(),
                         "Thông báo diện rộng! 📢",
                         loggedInUser.getUsername() + " vừa nhắc đến tất cả mọi người trong một bình luận: \"" + content + "\"", "/news/" + id
                     );
+
+                    // 2. 🌟 GIẢI PHÁP IN-APP CHO NHIỀU NGƯỜI: Vòng lặp gửi WebSocket cho tất cả
+                    List<User> allUsers = userRepository.findAll(); // Lấy tất cả user từ DB
+                    for (User u : allUsers) {
+                        // Trừ bản thân người gõ comment ra, còn lại bắn hết!
+                        if (!u.getUsername().equals(loggedInUser.getUsername())) {
+                            sendInAppNotification(u.getUsername(), "Thông báo diện rộng! 📢", loggedInUser.getUsername() + " vừa nhắc đến tất cả mọi người trong một bình luận: \"" + content + "\"", "/news/" + id);
+                        }
+                    }
                 } else {
                     if (parentId != null) {
                         // =========================================================
@@ -125,6 +137,7 @@ public class NewsController {
                                     "Phản hồi mới! 💬", 
                                     loggedInUser.getUsername() + " đã trả lời bình luận của bạn: \"" + content + "\"", "/news/" + id
                                 );
+                                sendInAppNotification(uname, "Phản hồi mới! 💬", loggedInUser.getUsername() + " đã trả lời bình luận của bạn", "/news/" + id);
                             }
                         }
                     } else {
@@ -140,6 +153,7 @@ public class NewsController {
                                 "Bình luận mới! 💬", 
                                 loggedInUser.getUsername() + " vừa bình luận vào bài viết của bạn: \"" + content + "\"", "/news/" + id
                             );
+                            sendInAppNotification(authorUsername, "Bình luận mới! 💬", loggedInUser.getUsername() + " vừa bình luận vào bài viết của bạn: \"" + content + "\"", "/news/" + id);
                         }
                         
                         // b) Bắn cho những người bị tag lẻ tẻ trong bình luận gốc (Nhắc tên)
@@ -150,6 +164,7 @@ public class NewsController {
                                     "Bạn được nhắc tên! 🏷️", 
                                     loggedInUser.getUsername() + " vừa nhắc đến bạn trong một bình luận: \"" + content + "\"", "/news/" + id
                                 );
+                                sendInAppNotification(uname, "Bạn được nhắc tên! 🏷️", loggedInUser.getUsername() + " vừa nhắc đến bạn trong một bình luận: \"" + content + "\"", "/news/" + id);
                             }
                         }
                     }
@@ -315,5 +330,23 @@ public class NewsController {
         response.put("newLikeCount", comment.getLikedUsers().size());
         
         return response;
+    }
+
+    // Hàm vừa lưu DB vừa bắn mạng nội bộ WebSocket Realtime
+    private void sendInAppNotification(String receiver, String title, String body, String url) {
+        try {
+            // 1. Lưu lịch sử vào Database để xem lại sau
+            com.pesoc.website.model.InAppNotification notif = new com.pesoc.website.model.InAppNotification();
+            notif.setTitle(title);
+            notif.setBody(body);
+            notif.setUrl(url);
+            notif.setReceiverUsername(receiver);
+            inAppNotificationRepository.save(notif);
+
+            // 2. Bắn WebSocket tới kênh riêng của người nhận (nếu họ đang online)
+            messagingTemplate.convertAndSend("/topic/notifications/" + receiver, notif);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

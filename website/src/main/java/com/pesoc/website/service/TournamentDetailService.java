@@ -18,10 +18,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.pesoc.website.model.Match;
 import com.pesoc.website.model.PlayerStatDTO;
+import com.pesoc.website.model.Subscription;
 import com.pesoc.website.model.Tournament;
 import com.pesoc.website.model.TournamentRanking;
 import com.pesoc.website.model.User;
 import com.pesoc.website.repository.MatchRepository;
+import com.pesoc.website.repository.SubscriptionRepository;
 import com.pesoc.website.repository.TournamentRankingRepository;
 import com.pesoc.website.repository.TournamentRepository;
 import com.pesoc.website.repository.UserRepository;
@@ -38,6 +40,10 @@ public class TournamentDetailService {
     private TournamentRankingRepository rankingRepository;
     @Autowired
     private FirebaseService firebaseService;
+    @Autowired 
+    private SubscriptionRepository subscriptionRepository;
+    @Autowired private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
+    @Autowired private com.pesoc.website.repository.InAppNotificationRepository inAppNotificationRepository;
 
     @Transactional
     public void addMatch(String tName, String p1, String p2, String matchType, String phaseName, Integer roundNumber) {
@@ -83,6 +89,12 @@ public class TournamentDetailService {
                 "Đã có lịch thi đấu " + actualPhaseName + "! 🗓️", 
                 "Bạn có cuộc hẹn với " + tournament.getName() + ": Lịch thi đấu " + actualPhaseName + "!", "/tournament-detail/" + tName
             );
+
+            List<Subscription> subs = subscriptionRepository.findByTargetIdAndTargetType(tName, "TOURNAMENT");
+            for(Subscription sub : subs){
+                String subName = sub.getUser().getUsername();
+                sendInAppNotification(subName, "Đã có lịch thi đấu " + actualPhaseName + "! 🗓️", "Bạn có cuộc hẹn với " + tournament.getName() + ": Lịch thi đấu " + actualPhaseName + "!", "/tournament-detail/" + tName);
+            }
         }
     }
 
@@ -166,24 +178,32 @@ public class TournamentDetailService {
             firebaseService.sendToSubscribers(
                 tName, 
                 "TOURNAMENT", 
-                "NHÀ VÔ ĐỊCH" + tournament.getName(), 
+                "NHÀ VÔ ĐỊCH " + tournament.getName(), 
                 "[" + championName + "]", 
                 "/tournament-detail/" + tName
             );
             firebaseService.sendToSubscribers(
                 tName, 
                 "TOURNAMENT", 
-                "VUA PHÁ LƯỚI" + tournament.getName(), 
+                "VUA PHÁ LƯỚI " + tournament.getName(), 
                 "[" + vualuoiStr + "]", 
                 "/tournament-detail/" + tName
             );
             firebaseService.sendToSubscribers(
                 tName, 
                 "TOURNAMENT", 
-                "GĂNG TAY VÀNG" + tournament.getName(), 
+                "GĂNG TAY VÀNG " + tournament.getName(), 
                 "[" + gangtayStr + "]", 
                 "/tournament-detail/" + tName
             );
+
+            List<Subscription> subs = subscriptionRepository.findByTargetIdAndTargetType(tName, "TOURNAMENT");
+            for(Subscription sub : subs){
+                String subName = sub.getUser().getUsername();
+                sendInAppNotification(subName, "NHÀ VÔ ĐỊCH " + tournament.getName(), "[" + championName + "]", "/tournament-detail/" + tName);
+                sendInAppNotification(subName, "VUA PHÁ LƯỚI " + tournament.getName(), "[" + vualuoiStr + "]", "/tournament-detail/" + tName);
+                sendInAppNotification(subName, "GĂNG TAY VÀNG " + tournament.getName(), "[" + gangtayStr + "]", "/tournament-detail/" + tName);
+            }
         }
     }
 
@@ -317,5 +337,22 @@ public class TournamentDetailService {
                 .sorted(java.util.Comparator.comparingInt(PlayerStatDTO::getConceded).reversed()).limit(5).collect(Collectors.toList()));
 
         return res;
+    }
+
+    private void sendInAppNotification(String receiver, String title, String body, String url) {
+        try {
+            // 1. Lưu lịch sử vào Database để xem lại sau
+            com.pesoc.website.model.InAppNotification notif = new com.pesoc.website.model.InAppNotification();
+            notif.setTitle(title);
+            notif.setBody(body);
+            notif.setUrl(url);
+            notif.setReceiverUsername(receiver);
+            inAppNotificationRepository.save(notif);
+
+            // 2. Bắn WebSocket tới kênh riêng của người nhận (nếu họ đang online)
+            messagingTemplate.convertAndSend("/topic/notifications/" + receiver, notif);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
