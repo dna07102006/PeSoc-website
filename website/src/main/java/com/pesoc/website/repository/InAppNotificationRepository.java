@@ -13,4 +13,7 @@ public interface InAppNotificationRepository extends JpaRepository<InAppNotifica
 
     // Tìm tất cả thông báo chưa đọc của user
     List<InAppNotification> findByReceiverUsernameAndIsReadFalse(String username);
+
+    // Sếp thêm dòng này vào Repository nhé
+    List<InAppNotification> findByReceiverUsernameOrderByCreatedAtDesc(String username);
 }

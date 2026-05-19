@@ -187,6 +187,16 @@ public class NewsController {
     public String deleteArticle(@PathVariable Long id) {
         Article article = articleRepository.findById(id).orElse(null);
         if(article != null){
+            if (article.getThumbnail() != null) {
+                try {
+                    String uploadDir = "uploads/news/";
+                    java.nio.file.Path imagePath = java.nio.file.Paths.get(uploadDir).resolve(article.getThumbnail());
+                    java.nio.file.Files.deleteIfExists(imagePath); // Tiêu diệt file ảnh
+                } catch (Exception e) {
+                    System.err.println("Lỗi khi xóa ảnh bài viết: " + e.getMessage());
+                }
+            }
+            
             articleRepository.delete(article);
         }
         
