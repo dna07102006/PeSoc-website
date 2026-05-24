@@ -1535,8 +1535,8 @@ function formatCaption(text) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 
-    // @all đặc biệt: màu vàng, không có profile link — xử lý TRƯỚC (bỏ @, chỉ hiện "all")
-    const allSpan = `<span class="mention mention-all" title="Thông báo tất cả người bình luận">all</span>`;
+    // @all đặc biệt: màu vàng, không có profile link — xử lý TRƯỚC (hiện "@all")
+    const allSpan = `<span class="mention mention-all" title="Thông báo tất cả người bình luận">@all</span>`;
     result = result.replace(/@all​/g, allSpan);          // format ZWSP
     result = result.replace(/@all(?=\s|<|$)/g, allSpan); // format plain
 

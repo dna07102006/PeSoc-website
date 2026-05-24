@@ -446,10 +446,16 @@ public class PesocTokController {
         String body  = truncate(content, 80);
 
         // --- @all: thông báo tất cả người đã bình luận trên video này ---
-        boolean hasAtAll = content.contains("@all​") || content.matches("(?s).*@all(\\s|$).*");
+        // Dùng (char)0x200B để tạo ZWSP tại runtime — không phụ thuộc encoding file source
+        // Frontend gửi @all + ZWSP + space → normalize ZWSP thành space trước khi check
+        String zwsp = String.valueOf((char) 0x200B);
+        String normalizedContent = content.replace(zwsp, " ");
+        boolean hasAtAll = normalizedContent.contains("@all ")
+                || normalizedContent.endsWith("@all");
         if (hasAtAll) {
-            commentRepo.findDistinctCommentersByVideo(video).forEach(commenter ->
-                doSendMentionNotif(commenter.getUsername(), sender.getUsername(), title, body, url, mentioned));
+            // @all → báo TẤT CẢ user trên hệ thống (trừ người gửi)
+            userRepo.findAll().forEach(u ->
+                doSendMentionNotif(u.getUsername(), sender.getUsername(), title, body, url, mentioned));
         }
 
         // --- Mention cá nhân ---
@@ -468,8 +474,20 @@ public class PesocTokController {
         String title = uploader.getUsername() + " đã nhắc đến bạn trong video 📢";
         String body  = truncate(caption, 80);
 
+        // Kiểm tra @all trong caption — cùng logic với handleMentions
+        String zwsp = String.valueOf((char) 0x200B);
+        String normalizedCaption = caption.replace(zwsp, " ");
+        boolean hasAtAll = normalizedCaption.contains("@all ")
+                || normalizedCaption.endsWith("@all");
+        if (hasAtAll) {
+            // @all → báo TẤT CẢ user trên hệ thống (trừ người đăng video)
+            userRepo.findAll().forEach(u ->
+                doSendMentionNotif(u.getUsername(), uploader.getUsername(), title, body, url, mentioned));
+        }
+
+        // Mention cá nhân (bỏ qua "all" vì đã xử lý ở trên)
         extractMentions(caption).stream()
-            .filter(u -> !u.equalsIgnoreCase("all")) // @all không có nghĩa trong caption
+            .filter(u -> !u.equalsIgnoreCase("all"))
             .forEach(u -> doSendMentionNotif(u, uploader.getUsername(), title, body, url, mentioned));
     }
 
