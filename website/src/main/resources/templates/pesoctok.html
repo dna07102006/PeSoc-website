@@ -287,21 +287,49 @@ body {
     font-style: italic;
     color: rgba(255,255,255,0.45);
 }
+.video-caption-wrapper {
+    position: relative;
+}
 .video-caption {
     font-size: 0.82rem;
     line-height: 1.45;
     color: #ccc;
-    max-height: 52px;
+    /* Collapsed: 2 dòng */
+    max-height: 2.9em;
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
-    cursor: pointer;
+    word-break: break-word;
 }
 .video-caption.expanded {
-    max-height: none;
+    /* Expanded: scroll được, tối đa ~35% chiều cao màn hình */
+    display: block;
     -webkit-line-clamp: unset;
+    max-height: 35vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.2) transparent;
+    overscroll-behavior: contain;  /* không cuộn sang video khi đang đọc caption */
+    padding-right: 4px;
 }
+.video-caption.expanded::-webkit-scrollbar { width: 3px; }
+.video-caption.expanded::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+
+.caption-toggle-btn {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.6);
+    font-size: 0.75rem;
+    padding: 2px 0 0;
+    cursor: pointer;
+    display: none;   /* ẩn nếu caption ngắn */
+    align-items: center;
+    gap: 3px;
+    transition: color 0.2s;
+}
+.caption-toggle-btn:hover { color: #fff; }
+.caption-toggle-btn.visible { display: flex; }
 
 /* ============================================================
    UPLOAD BUTTON — cố định dưới cùng giữa màn hình
@@ -784,7 +812,12 @@ function renderFeed() {
                         <span class="uploader-time">Đã đăng ${timeAgo(v.createdAt)}</span>
                     </div>
                 </a>
-                <div class="video-caption" id="caption-${v.id}" onclick="toggleCaption(this)">${formatCaption(v.caption || '')}</div>
+                <div class="video-caption-wrapper">
+                    <div class="video-caption" id="caption-${v.id}">${formatCaption(v.caption || '')}</div>
+                    <button class="caption-toggle-btn" id="caption-toggle-${v.id}" onclick="toggleCaption(${v.id})">
+                        Xem thêm <i class="fas fa-chevron-down" style="font-size:0.65rem;"></i>
+                    </button>
+                </div>
             </div>
         `;
 
@@ -793,6 +826,20 @@ function renderFeed() {
 
     // Scroll detection để cập nhật video active
     setupScrollDetection();
+
+    // Sau khi render xong, kiểm tra từng caption có bị clamp không → hiện nút "Xem thêm"
+    requestAnimationFrame(() => {
+        videos.forEach(v => {
+            const captionEl = document.getElementById(`caption-${v.id}`);
+            const toggleBtn = document.getElementById(`caption-toggle-${v.id}`);
+            if (captionEl && toggleBtn) {
+                // scrollHeight > clientHeight → nội dung bị cắt → cần nút
+                if (captionEl.scrollHeight > captionEl.clientHeight + 2) {
+                    toggleBtn.classList.add('visible');
+                }
+            }
+        });
+    });
 }
 
 // ============================================================
@@ -982,7 +1029,22 @@ async function saveCaption() {
             const v = videos.find(v => v.id == videoId);
             if (v) v.caption = caption;
             const captionEl = document.getElementById(`caption-${videoId}`);
-            if (captionEl) captionEl.innerHTML = formatCaption(caption);
+            const toggleBtn = document.getElementById(`caption-toggle-${videoId}`);
+            if (captionEl) {
+                // Reset expanded state
+                captionEl.classList.remove('expanded');
+                captionEl.innerHTML = formatCaption(caption);
+                // Re-check nếu caption mới có cần nút "Xem thêm"
+                if (toggleBtn) {
+                    toggleBtn.classList.remove('visible');
+                    toggleBtn.innerHTML = 'Xem thêm <i class="fas fa-chevron-down" style="font-size:0.65rem;"></i>';
+                    requestAnimationFrame(() => {
+                        if (captionEl.scrollHeight > captionEl.clientHeight + 2) {
+                            toggleBtn.classList.add('visible');
+                        }
+                    });
+                }
+            }
             bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
         }
     } catch (e) { console.error(e); }
@@ -1391,8 +1453,18 @@ function formatCaption(text) {
         .replace(/\n/g, '<br>');
 }
 
-function toggleCaption(el) {
-    el.classList.toggle('expanded');
+function toggleCaption(videoId) {
+    const captionEl = document.getElementById(`caption-${videoId}`);
+    const toggleBtn = document.getElementById(`caption-toggle-${videoId}`);
+    if (!captionEl || !toggleBtn) return;
+
+    const isExpanded = captionEl.classList.toggle('expanded');
+
+    if (isExpanded) {
+        toggleBtn.innerHTML = 'Thu gọn <i class="fas fa-chevron-up" style="font-size:0.65rem;"></i>';
+    } else {
+        toggleBtn.innerHTML = 'Xem thêm <i class="fas fa-chevron-down" style="font-size:0.65rem;"></i>';
+    }
 }
 
 function timeAgo(dateStr) {
