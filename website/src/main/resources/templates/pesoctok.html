@@ -445,7 +445,9 @@ body {
     line-height: 1.4;
     word-break: break-word;
 }
-.comment-text .mention { color: #3b82f6; font-weight: 600; }
+.comment-text .mention { color: #3b82f6; font-weight: 600; cursor: pointer; }
+.comment-text .mention:hover { text-decoration: underline; }
+.mention-all { color: #f59e0b !important; } /* @all màu vàng amber để phân biệt */
 .comment-meta {
     display: flex;
     align-items: center;
@@ -1395,19 +1397,38 @@ async function searchMentionUsers(q) {
 
 function showMentionDropdown(users, query) {
     const dropdown = document.getElementById('mention-dropdown');
-    if (users.length === 0) { closeMentionDropdown(); return; }
 
-    dropdown.innerHTML = users.map(u => `
-        <div class="mention-item" onclick="insertMention('${u.username}')">
-            <div class="mention-avatar">
-                ${u.avatar
-                    ? `<img src="/uploads/avatars/${u.avatar}" alt="${u.username}">`
-                    : `<i class="fas fa-user text-secondary" style="font-size:0.75rem;"></i>`}
+    const items = [];
+
+    // Luôn hiện @all khi query khớp ("a", "al", "all")
+    if ('all'.startsWith(query.toLowerCase())) {
+        items.push(`
+            <div class="mention-item" onclick="insertMention('all')" style="background:rgba(245,158,11,0.08);">
+                <div class="mention-avatar" style="background:#92400e;">
+                    <i class="fas fa-bell" style="font-size:0.75rem;color:#f59e0b;"></i>
+                </div>
+                <span><strong style="color:#f59e0b;">@all</strong>
+                    <span style="color:#888;font-size:0.72rem;margin-left:4px;">Thông báo tất cả người bình luận</span>
+                </span>
             </div>
-            @${u.username}
-        </div>
-    `).join('');
+        `);
+    }
 
+    users.forEach(u => {
+        items.push(`
+            <div class="mention-item" onclick="insertMention('${u.username.replace(/'/g, "\\'")}')">
+                <div class="mention-avatar">
+                    ${u.avatar
+                        ? `<img src="/uploads/avatars/${u.avatar}" alt="${u.username}">`
+                        : `<i class="fas fa-user text-secondary" style="font-size:0.75rem;"></i>`}
+                </div>
+                @${u.username}
+            </div>
+        `);
+    });
+
+    if (items.length === 0) { closeMentionDropdown(); return; }
+    dropdown.innerHTML = items.join('');
     dropdown.style.display = 'block';
 }
 
@@ -1469,9 +1490,15 @@ function formatCaption(text) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 
-    // Helper: tạo span mention có thể click → profile
+    // @all đặc biệt: màu vàng, không có profile link — xử lý TRƯỚC các pattern khác
+    const allSpan = `<span class="mention mention-all" title="Thông báo tất cả người bình luận">@all</span>`;
+    result = result.replace(/@all​/g, allSpan);          // format ZWSP
+    result = result.replace(/@all(?=\s|<|$)/g, allSpan); // format plain
+
+    // Helper: tạo span mention có thể click → profile (chỉ dùng cho @username thường)
     const mentionSpan = (username) => {
         const clean = username.trim();
+        if (clean.toLowerCase() === 'all') return allSpan; // phòng thủ thêm
         const url = '/profile/' + encodeURIComponent(clean);
         return `<span class="mention" onclick="event.stopPropagation();window.location.href='${url}'" title="Xem profile ${clean}" style="cursor:pointer;">@${clean}</span>`;
     };
