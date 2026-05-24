@@ -88,6 +88,25 @@
 <div id="comment-overlay" onclick="closeCommentPanel()"></div>
 
 <!-- ============================================================
+     MODAL XÁC NHẬN XÓA VIDEO
+     ============================================================ -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content tok-modal" style="border-radius:20px; overflow:hidden;">
+            <div class="modal-body p-4 text-center">
+                <div style="font-size:2.2rem;margin:0 auto 16px;line-height:1;">😭🙏🥀</div>
+                <h6 class="fw-bold text-white mb-2">Xóa video?</h6>
+                <p class="text-secondary mb-4" style="font-size:0.85rem;">Hành động này không thể hoàn tác. Video sẽ bị xóa vĩnh viễn.</p>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary flex-fill fw-bold rounded-pill" data-bs-dismiss="modal" style="font-size:0.9rem;">Hủy</button>
+                    <button type="button" id="confirm-delete-btn" class="btn btn-danger flex-fill fw-bold rounded-pill" style="font-size:0.9rem;">Xóa</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
      MODAL EDIT CAPTION
      ============================================================ -->
 <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
@@ -609,15 +628,17 @@ body {
 .more-dropdown-item.danger:hover { background: #3a1515; }
 
 /* ============================================================
-   LOADING SPINNER
+   COMMENT HIGHLIGHT (khi điều hướng từ thông báo)
    ============================================================ */
-#loading-spinner {
-    position: fixed;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 9999;
-    color: #fff;
-    font-size: 2rem;
+.comment-highlighted {
+    background: rgba(255, 193, 7, 0.12) !important;
+    border-radius: 10px;
+    outline: 1.5px solid rgba(255, 193, 7, 0.5);
+    animation: commentPulse 0.6s ease-out;
+}
+@keyframes commentPulse {
+    0%   { background: rgba(255, 193, 7, 0.35) !important; outline-color: rgba(255,193,7,0.9); }
+    100% { background: rgba(255, 193, 7, 0.12) !important; outline-color: rgba(255,193,7,0.5); }
 }
 </style>
 
@@ -640,8 +661,32 @@ const isLoggedIn = document.getElementById('pesoc-auth-status')?.getAttribute('d
 // ============================================================
 // INIT
 // ============================================================
-document.addEventListener('DOMContentLoaded', () => {
-    loadVideos();
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadVideos();
+
+    // Xử lý URL params: ?v={videoId}&c={commentId}
+    const params = new URLSearchParams(window.location.search);
+    const targetVideoId = params.get('v');
+    const targetCommentId = params.get('c');
+
+    if (targetVideoId) {
+        const idx = videos.findIndex(v => String(v.id) === targetVideoId);
+        if (idx >= 0) {
+            // Scroll đến đúng video
+            setTimeout(() => scrollToVideo(idx), 200);
+
+            if (targetCommentId) {
+                // Mở panel bình luận rồi highlight comment
+                setTimeout(async () => {
+                    const v = videos[idx];
+                    await openCommentPanel(v.id, v.commentCount);
+                    setTimeout(() => highlightComment(targetCommentId), 400);
+                }, 600);
+            }
+        }
+        // Xóa params khỏi URL để không bị trigger lại khi reload
+        window.history.replaceState({}, '', '/pesoctok');
+    }
 
     // Đóng more dropdown khi click ngoài
     document.addEventListener('click', (e) => {
@@ -889,22 +934,30 @@ function toggleMoreMenu(event, videoId, btn) {
     openMoreDropdown = dropdown;
 }
 
-async function deleteVideo(videoId) {
-    if (!confirm('Bạn có chắc muốn xóa video này không?')) return;
-    try {
-        const res = await fetch(`/api/pesoctok/video/${videoId}`, { method: 'DELETE' });
-        if (res.ok) {
-            // Xóa khỏi danh sách và re-render
-            videos = videos.filter(v => v.id !== videoId);
-            currentIndex = Math.max(0, currentIndex - 1);
-            renderFeed();
-            if (openMoreDropdown) { openMoreDropdown.remove(); openMoreDropdown = null; }
-        } else {
-            const data = await res.json();
-            alert(data.error || 'Không thể xóa video!');
-        }
-    } catch (e) { console.error(e); }
+let _pendingDeleteVideoId = null;
+
+function deleteVideo(videoId) {
+    _pendingDeleteVideoId = videoId;
+    if (openMoreDropdown) { openMoreDropdown.remove(); openMoreDropdown = null; }
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
+        if (!_pendingDeleteVideoId) return;
+        const videoId = _pendingDeleteVideoId;
+        _pendingDeleteVideoId = null;
+        bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+        try {
+            const res = await fetch(`/api/pesoctok/video/${videoId}`, { method: 'DELETE' });
+            if (res.ok) {
+                videos = videos.filter(v => v.id !== videoId);
+                currentIndex = Math.max(0, currentIndex - 1);
+                renderFeed();
+            }
+        } catch (e) { console.error(e); }
+    });
+});
 
 function openEditModal(videoId) {
     const v = videos.find(v => v.id === videoId);
@@ -1358,9 +1411,31 @@ function timeAgo(dateStr) {
 }
 
 function showLoginHint() {
-    // Mở modal đăng nhập
     const loginModal = document.getElementById('loginModal');
     if (loginModal) new bootstrap.Modal(loginModal).show();
+}
+
+// ============================================================
+// HIGHLIGHT COMMENT (khi bấm vào thông báo)
+// ============================================================
+function highlightComment(commentId) {
+    const el = document.getElementById(`comment-${commentId}`);
+    if (!el) return;
+
+    // Nếu comment đang nằm trong replies bị ẩn → mở ra trước
+    const repliesContainer = el.closest('.replies-container');
+    if (repliesContainer && repliesContainer.style.display === 'none') {
+        const wrapperId = repliesContainer.id; // "replies-{parentId}"
+        const parentId = wrapperId.replace('replies-', '');
+        const toggleBtn = document.getElementById(`toggle-replies-${parentId}`);
+        if (toggleBtn) toggleReplies(parentId, toggleBtn);
+    }
+
+    setTimeout(() => {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('comment-highlighted');
+        setTimeout(() => el.classList.remove('comment-highlighted'), 3500);
+    }, 300);
 }
 </script>
 

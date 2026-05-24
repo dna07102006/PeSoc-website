@@ -124,6 +124,14 @@ public class PesocTokController {
             video.getLikedUsers().removeIf(u -> u.getId().equals(logInUser.getId()));
         } else {
             video.getLikedUsers().add(logInUser);
+            // Thông báo cho chủ video khi có người tim (không tự tim chính mình)
+            String owner = video.getUploader().getUsername();
+            if (!owner.equals(logInUser.getUsername())) {
+                sendNotif(owner,
+                    logInUser.getUsername() + " đã thích video của bạn ❤️",
+                    truncate(video.getCaption() != null ? video.getCaption() : "Video của bạn", 80),
+                    "/pesoctok?v=" + video.getId());
+            }
         }
         videoRepo.save(video);
 
@@ -226,6 +234,15 @@ public class PesocTokController {
 
         commentRepo.save(comment);
 
+        // Thông báo cho chủ video khi có người bình luận
+        String videoOwner = videoOpt.get().getUploader().getUsername();
+        if (!videoOwner.equals(logInUser.getUsername())) {
+            sendNotif(videoOwner,
+                logInUser.getUsername() + " đã bình luận video của bạn 💬",
+                truncate(content, 80),
+                "/pesoctok?v=" + videoId + "&c=" + comment.getId());
+        }
+
         // Xử lý @mention - gửi thông báo cho user được tag
         handleMentions(content, logInUser, videoOpt.get(), comment.getId());
 
@@ -256,6 +273,15 @@ public class PesocTokController {
             comment.getLikedUsers().removeIf(u -> u.getId().equals(logInUser.getId()));
         } else {
             comment.getLikedUsers().add(logInUser);
+            // Thông báo cho chủ bình luận khi có người tim
+            String commentOwner = comment.getUser().getUsername();
+            if (!commentOwner.equals(logInUser.getUsername())) {
+                Long vidId = comment.getVideo().getId();
+                sendNotif(commentOwner,
+                    logInUser.getUsername() + " đã thích bình luận của bạn ❤️",
+                    truncate(comment.getContent(), 80),
+                    "/pesoctok?v=" + vidId + "&c=" + commentId);
+            }
         }
         commentRepo.save(comment);
 
@@ -361,22 +387,29 @@ public class PesocTokController {
 
             mentioned.add(mentionedUsername);
 
-            // Lưu thông báo in-app
-            InAppNotification notif = new InAppNotification();
-            notif.setTitle("Bạn được nhắc đến trong PeSocTok 🎬");
-            notif.setBody(sender.getUsername() + " đã tag bạn: \"" + truncate(content, 80) + "\"");
-            notif.setUrl("/pesoctok");
-            notif.setReceiverUsername(mentionedUsername);
-            notif.setCreatedAt(LocalDateTime.now());
-            notifRepo.save(notif);
-
-            // Gửi real-time qua WebSocket
-            messagingTemplate.convertAndSend("/topic/notifications/" + mentionedUsername, notif);
+            sendNotif(mentionedUsername,
+                sender.getUsername() + " đã nhắc đến bạn trong bình luận 📢",
+                truncate(content, 80),
+                "/pesoctok?v=" + video.getId() + "&c=" + commentId);
         }
     }
 
     private String truncate(String str, int maxLen) {
         if (str == null) return "";
         return str.length() > maxLen ? str.substring(0, maxLen) + "..." : str;
+    }
+
+    // ============================================================
+    // HELPER: Tạo & gửi thông báo in-app + WebSocket
+    // ============================================================
+    private void sendNotif(String receiverUsername, String title, String body, String url) {
+        InAppNotification notif = new InAppNotification();
+        notif.setTitle(title);
+        notif.setBody(body);
+        notif.setUrl(url);
+        notif.setReceiverUsername(receiverUsername);
+        notif.setCreatedAt(LocalDateTime.now());
+        notifRepo.save(notif);
+        messagingTemplate.convertAndSend("/topic/notifications/" + receiverUsername, notif);
     }
 }
