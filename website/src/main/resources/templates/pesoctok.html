@@ -1359,16 +1359,18 @@ function handleCommentInput(textarea) {
     const val = textarea.value;
     const pos = textarea.selectionStart;
 
-    // Tìm @ gần nhất trước vị trí cursor
+    // Tìm @ gần nhất trước cursor
+    // ​ (zero-width space) = dấu kết thúc mention đã hoàn thành → dừng tìm
     let atPos = -1;
     for (let i = pos - 1; i >= 0; i--) {
         if (val[i] === '@') { atPos = i; break; }
-        if (val[i] === ' ' || val[i] === '\n') break;
+        if (val[i] === '​' || val[i] === '\n') break;
     }
 
     if (atPos >= 0) {
-        const query = val.substring(atPos + 1, pos);
-        if (query.length > 0) {
+        // Loại bỏ ​ thừa, trim trailing space (user có thể gõ @test rồi space)
+        const query = val.substring(atPos + 1, pos).replace(/​/g, '').trimEnd();
+        if (query.length > 0 && query.length <= 30 && !/[@\n]/.test(query)) {
             mentionStartPos = atPos;
             searchMentionUsers(query);
         } else {
@@ -1416,11 +1418,29 @@ function closeMentionDropdown() {
 function insertMention(username) {
     const input = document.getElementById('comment-input');
     const val = input.value;
+
+    // Kiểm tra username này đã được tag trong comment hiện tại chưa
+    const zwsp = '​';
+    if (val.includes(`@${username}${zwsp}`)) {
+        // Hiển thị cảnh báo ngay trong dropdown, tự đóng sau 1.5s
+        const dropdown = document.getElementById('mention-dropdown');
+        dropdown.innerHTML = `
+            <div class="mention-item" style="color:#f87171;pointer-events:none;gap:6px;">
+                <i class="fas fa-exclamation-circle"></i>
+                @${username} đã được tag rồi
+            </div>`;
+        dropdown.style.display = 'block';
+        setTimeout(closeMentionDropdown, 1500);
+        return;
+    }
+
     const pos = input.selectionStart;
     const before = val.substring(0, mentionStartPos);
     const after = val.substring(pos);
-    input.value = before + '@' + username + ' ' + after;
-    const newPos = before.length + username.length + 2;
+    // U+200B (zero-width space) làm terminator — vô hình với user
+    const tag = `@${username}${zwsp}`;
+    input.value = before + tag + ' ' + after;
+    const newPos = before.length + tag.length + 1;
     input.setSelectionRange(newPos, newPos);
     closeMentionDropdown();
     input.focus();
@@ -1444,13 +1464,26 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================================
 function formatCaption(text) {
     if (!text) return '';
-    // Highlight @mentions
-    return text
+    let result = text
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/@(\w+)/g, '<span class="mention">@$1</span>')
-        .replace(/\n/g, '<br>');
+        .replace(/>/g, '&gt;');
+
+    // Helper: tạo span mention có thể click → profile
+    const mentionSpan = (username) => {
+        const clean = username.trim();
+        const url = '/profile/' + encodeURIComponent(clean);
+        return `<span class="mention" onclick="event.stopPropagation();window.location.href='${url}'" title="Xem profile ${clean}" style="cursor:pointer;">@${clean}</span>`;
+    };
+
+    // Format mới: @username​ (U+200B terminator) — hỗ trợ username có dấu cách
+    result = result.replace(/@([^​@\n]+)​/g, (_, u) => mentionSpan(u));
+    // Backward compat: @[username]
+    result = result.replace(/@\[([^\]]+)\]/g, (_, u) => mentionSpan(u));
+    // Backward compat: @simpleword
+    result = result.replace(/@(\w+)/g, (_, u) => mentionSpan(u));
+
+    return result.replace(/\n/g, '<br>');
 }
 
 function toggleCaption(videoId) {

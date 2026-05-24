@@ -371,27 +371,53 @@ public class PesocTokController {
 
     // ============================================================
     // HELPER: Xử lý @mention trong bình luận
+    // Hỗ trợ 3 format:
+    //   1. @username​  — format mới, username có thể chứa dấu cách (U+200B là terminator vô hình)
+    //   2. @[username]      — format cũ (backward compat)
+    //   3. @simpleword      — mention chữ đơn truyền thống (backward compat)
     // ============================================================
     private void handleMentions(String content, User sender, PesocTokVideo video, Long commentId) {
-        Pattern pattern = Pattern.compile("@(\\w+)");
-        Matcher matcher = pattern.matcher(content);
         Set<String> mentioned = new HashSet<>();
 
-        while (matcher.find()) {
-            String mentionedUsername = matcher.group(1);
-            if (mentioned.contains(mentionedUsername)) continue;
-            if (mentionedUsername.equalsIgnoreCase(sender.getUsername())) continue;
-
-            User mentionedUser = userRepo.findByUsername(mentionedUsername);
-            if (mentionedUser == null) continue;
-
-            mentioned.add(mentionedUsername);
-
-            sendNotif(mentionedUsername,
-                sender.getUsername() + " đã nhắc đến bạn trong bình luận 📢",
-                truncate(content, 80),
-                "/pesoctok?v=" + video.getId() + "&c=" + commentId);
+        // --- Format 1: @username + U+200B (zero-width space) ---
+        Pattern zwspPattern = Pattern.compile("@([^​@\n]+)​");
+        Matcher m1 = zwspPattern.matcher(content);
+        while (m1.find()) {
+            doNotifyMention(m1.group(1).trim(), sender, video, commentId, content, mentioned);
         }
+
+        // --- Format 2: @[username] (backward compat) ---
+        Pattern bracketPattern = Pattern.compile("@\\[([^\\]]+)\\]");
+        Matcher m2 = bracketPattern.matcher(content);
+        while (m2.find()) {
+            doNotifyMention(m2.group(1).trim(), sender, video, commentId, content, mentioned);
+        }
+
+        // --- Format 3: @simpleword (backward compat) ---
+        // Chạy trên phiên bản content đã xóa các mention format 1 & 2 để tránh match nhầm
+        // Ví dụ: "@test 2​" đã match ở format 1 → xóa đi trước khi dùng \w+ regex
+        String remaining = content
+            .replaceAll("@[^​@\n]+​", "")   // xóa format 1
+            .replaceAll("@\\[[^\\]]+\\]", "");          // xóa format 2
+        Pattern simplePattern = Pattern.compile("@(\\w+)");
+        Matcher m3 = simplePattern.matcher(remaining);
+        while (m3.find()) {
+            doNotifyMention(m3.group(1), sender, video, commentId, content, mentioned);
+        }
+    }
+
+    private void doNotifyMention(String username, User sender, PesocTokVideo video,
+                                  Long commentId, String content, Set<String> mentioned) {
+        if (username == null || username.isEmpty()) return;
+        if (mentioned.contains(username)) return;
+        if (username.equalsIgnoreCase(sender.getUsername())) return;
+        User mentionedUser = userRepo.findByUsername(username);
+        if (mentionedUser == null) return;
+        mentioned.add(username);
+        sendNotif(username,
+            sender.getUsername() + " đã nhắc đến bạn trong bình luận 📢",
+            truncate(content, 80),
+            "/pesoctok?v=" + video.getId() + "&c=" + commentId);
     }
 
     private String truncate(String str, int maxLen) {
