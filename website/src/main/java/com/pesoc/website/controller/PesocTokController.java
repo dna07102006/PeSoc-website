@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Controller
 public class PesocTokController {
@@ -21,6 +22,8 @@ public class PesocTokController {
     @Autowired private UserRepository userRepo;
     @Autowired private InAppNotificationRepository notifRepo;
     @Autowired private SimpMessagingTemplate messagingTemplate;
+    @Autowired private SubscriptionRepository subscriptionRepo;
+    @Autowired private com.pesoc.website.service.FirebaseService firebaseService;
 
     // ============================================================
     // TRANG CHÍNH PESOCTOK
@@ -100,6 +103,21 @@ public class PesocTokController {
         video.setUploader(logInUser);
         video.setCreatedAt(LocalDateTime.now());
         videoRepo.save(video);
+
+        // Gửi thông báo cho tất cả người theo dõi (bấm chuông ở profile)
+        List<Subscription> followers = subscriptionRepo.findByTargetIdAndTargetType(
+                logInUser.getUsername(), "PLAYER");
+        String notifTitle = logInUser.getUsername() + " vừa đăng video mới trên PeSocTok 🎬";
+        String notifBody  = truncate(caption != null && !caption.isBlank() ? caption : "Video mới", 80);
+        String notifUrl   = "/pesoctok?v=" + video.getId();
+        for (Subscription sub : followers) {
+            String followerUsername = sub.getUser().getUsername();
+            if (!followerUsername.equals(logInUser.getUsername())) {
+                sendNotif(followerUsername, notifTitle, notifBody, notifUrl);
+            }
+        }
+        // WebPush: gửi thông báo đẩy đến thiết bị của người theo dõi
+        firebaseService.sendToSubscribers(logInUser.getUsername(), "PLAYER", notifTitle, notifBody, notifUrl);
 
         return ResponseEntity.ok(Map.of("message", "Đăng video thành công!", "id", video.getId()));
     }
@@ -379,30 +397,40 @@ public class PesocTokController {
     private void handleMentions(String content, User sender, PesocTokVideo video, Long commentId) {
         Set<String> mentioned = new HashSet<>();
 
-        // --- Format 1: @username + U+200B (zero-width space) ---
+        // --- @all: thông báo tất cả người đã bình luận trên video này ---
+        boolean hasAtAll = content.contains("@all​") || content.matches("(?s).*@all(\\s|$).*");
+        if (hasAtAll) {
+            List<User> commenters = commentRepo.findDistinctCommentersByVideo(video);
+            for (User commenter : commenters) {
+                doNotifyMention(commenter.getUsername(), sender, video, commentId, content, mentioned);
+            }
+        }
+
+        // --- Format 1: @username + U+200B (zero-width space) — bỏ qua "all" đã xử lý trên ---
         Pattern zwspPattern = Pattern.compile("@([^​@\n]+)​");
         Matcher m1 = zwspPattern.matcher(content);
         while (m1.find()) {
-            doNotifyMention(m1.group(1).trim(), sender, video, commentId, content, mentioned);
+            String u = m1.group(1).trim();
+            if (!u.equalsIgnoreCase("all")) doNotifyMention(u, sender, video, commentId, content, mentioned);
         }
 
         // --- Format 2: @[username] (backward compat) ---
         Pattern bracketPattern = Pattern.compile("@\\[([^\\]]+)\\]");
         Matcher m2 = bracketPattern.matcher(content);
         while (m2.find()) {
-            doNotifyMention(m2.group(1).trim(), sender, video, commentId, content, mentioned);
+            String u = m2.group(1).trim();
+            if (!u.equalsIgnoreCase("all")) doNotifyMention(u, sender, video, commentId, content, mentioned);
         }
 
         // --- Format 3: @simpleword (backward compat) ---
-        // Chạy trên phiên bản content đã xóa các mention format 1 & 2 để tránh match nhầm
-        // Ví dụ: "@test 2​" đã match ở format 1 → xóa đi trước khi dùng \w+ regex
         String remaining = content
-            .replaceAll("@[^​@\n]+​", "")   // xóa format 1
-            .replaceAll("@\\[[^\\]]+\\]", "");          // xóa format 2
+            .replaceAll("@[^​@\n]+​", "")
+            .replaceAll("@\\[[^\\]]+\\]", "");
         Pattern simplePattern = Pattern.compile("@(\\w+)");
         Matcher m3 = simplePattern.matcher(remaining);
         while (m3.find()) {
-            doNotifyMention(m3.group(1), sender, video, commentId, content, mentioned);
+            String u = m3.group(1);
+            if (!u.equalsIgnoreCase("all")) doNotifyMention(u, sender, video, commentId, content, mentioned);
         }
     }
 
@@ -426,9 +454,10 @@ public class PesocTokController {
     }
 
     // ============================================================
-    // HELPER: Tạo & gửi thông báo in-app + WebSocket
+    // HELPER: Tạo & gửi thông báo in-app + WebSocket + WebPush
     // ============================================================
     private void sendNotif(String receiverUsername, String title, String body, String url) {
+        // 1. In-app notification (lưu DB + đẩy qua WebSocket)
         InAppNotification notif = new InAppNotification();
         notif.setTitle(title);
         notif.setBody(body);
@@ -437,5 +466,8 @@ public class PesocTokController {
         notif.setCreatedAt(LocalDateTime.now());
         notifRepo.save(notif);
         messagingTemplate.convertAndSend("/topic/notifications/" + receiverUsername, notif);
+
+        // 2. WebPush (đẩy đến thiết bị qua Firebase FCM)
+        firebaseService.sendToUser(receiverUsername, title, body, url);
     }
 }
