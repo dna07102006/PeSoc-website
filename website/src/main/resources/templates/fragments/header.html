@@ -101,6 +101,40 @@
         .result-item { display: flex; align-items: center; padding: 10px 15px; color: #fff; text-decoration: none !important; }
         .result-item:hover { background-color: #252525; color: #ffc107 !important; }
 
+        /* PESOCTOK NAV LINK */
+        .pesoctok-nav-link { color: #fff !important; text-decoration: none; }
+        .pesoctok-nav-link:hover { opacity: 0.85; }
+
+        /* Icon TikTok (fa-brands fa-tiktok) — hiệu ứng 3 lớp màu */
+        .pesoctok-icon {
+            font-size: 1.25rem;
+            color: #ffffff;
+            filter:
+                drop-shadow(-2.5px -2px 0px #69C9D0)
+                drop-shadow(2.5px  2px  0px #EE1D52);
+            transition: filter 0.2s;
+        }
+        .pesoctok-nav-link:hover .pesoctok-icon {
+            filter:
+                drop-shadow(-3px -2.5px 0px #69C9D0)
+                drop-shadow(3px   2.5px 0px #EE1D52);
+        }
+
+        /* Chữ PeSocTok — 3 màu bằng text-shadow */
+        .pesoctok-nav-text {
+            font-weight: 800;
+            font-size: 1rem;
+            color: #ffffff;
+            text-shadow:
+                -2px -1.5px 0 #69C9D0,
+                 2px  1.5px 0 #EE1D52;
+        }
+        .pesoctok-nav-link:hover .pesoctok-nav-text {
+            text-shadow:
+                -2.5px -2px 0 #69C9D0,
+                 2.5px  2px 0 #EE1D52;
+        }
+
         /* AUTH SECTION */
         .auth-wrapper { display: flex; align-items: center; border-left: 1px solid rgba(255, 255, 255, 0.15); padding-left: 20px; margin-left: 15px; }
         .btn-logout { color: #888 !important; text-decoration: none; font-size: 0.8rem; margin-left: 15px; transition: 0.3s; }
@@ -335,6 +369,12 @@
                         <li class="nav-item"><a class="nav-link" th:href="@{/upcoming-matches}">Lịch thi đấu</a></li>
                         <li class="nav-item"><a class="nav-link" th:href="@{/tournaments}">Giải đấu</a></li>
                         <li class="nav-item"><a class="nav-link" th:href="@{/news}">Tin tức</a></li>
+                        <li class="nav-item">
+                            <a class="nav-link fw-bold d-flex align-items-center gap-1 pesoctok-nav-link" th:href="@{/pesoctok}">
+                                <i class="fa-brands fa-tiktok pesoctok-icon"></i>
+                                <span class="pesoctok-nav-text">PeSocTok</span>
+                            </a>
+                        </li>
                         <li class="nav-item"><a class="nav-link" th:href="@{/about-us}">Về chúng tôi</a></li>
                     </ul>
                 </div>
