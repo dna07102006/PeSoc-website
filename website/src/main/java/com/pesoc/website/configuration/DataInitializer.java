@@ -41,8 +41,9 @@ public class DataInitializer implements CommandLineRunner {
 
             // 4. Lưu User (nhờ CascadeType.ALL nên EloHistory cũng sẽ tự được lưu)
             userRepository.save(admin);
-            
+
             System.out.println(">>> Đã khởi tạo tài khoản Nam (Admin) kèm mốc Elo lịch sử!");
         }
+
     }
 }
