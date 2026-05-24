@@ -16,11 +16,14 @@ const messaging = firebase.messaging();
 
 self.addEventListener('notificationclick', function(event) {
     event.notification.close();
-    
-    // 1. Lấy URL từ thông báo (fallback về /home nếu không tìm thấy)
-    const targetUrl = (event.notification.data && event.notification.data.url) 
-                      ? event.notification.data.url 
-                      : '/home';
+
+    // 1. Lấy URL từ thông báo
+    // Firebase SDK bọc payload background vào event.notification.data.FCM_MSG.data
+    // Còn foreground tự show thì data.url là trực tiếp — kiểm tra cả hai
+    const data = event.notification.data || {};
+    const targetUrl = data.url
+                   || (data.FCM_MSG && data.FCM_MSG.data && data.FCM_MSG.data.url)
+                   || '/home';
 
     // 2. Chuyển đổi URL sang dạng đầy đủ
     const fullUrl = new URL(targetUrl, self.location.origin).href;

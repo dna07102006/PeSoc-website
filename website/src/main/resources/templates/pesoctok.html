@@ -50,7 +50,12 @@
                 </div>
                 <div class="mb-4">
                     <label class="form-label text-secondary small fw-bold">CAPTION / MÔ TẢ</label>
-                    <textarea id="upload-caption" class="form-control tok-input" rows="3" placeholder="Nhập mô tả video... (dùng @username để tag bạn bè)"></textarea>
+                    <div style="position:relative;">
+                        <textarea id="upload-caption" class="form-control tok-input" rows="3"
+                            placeholder="Nhập mô tả video... (dùng @ để tag bạn bè)"
+                            oninput="handleCommentInput(this)"></textarea>
+                        <div id="caption-mention-dropdown" style="display:none;"></div>
+                    </div>
                 </div>
                 <button onclick="submitUpload()" class="btn btn-warning w-100 fw-bold py-2 rounded-pill">
                     <i class="fas fa-upload me-2"></i>ĐĂNG VIDEO
@@ -445,9 +450,11 @@ body {
     line-height: 1.4;
     word-break: break-word;
 }
-.comment-text .mention { color: #3b82f6; font-weight: 600; cursor: pointer; }
-.comment-text .mention:hover { text-decoration: underline; }
-.mention-all { color: #f59e0b !important; } /* @all màu vàng amber để phân biệt */
+.comment-text .mention,
+.video-caption .mention { color: #3b82f6; font-weight: 600; cursor: pointer; }
+.comment-text .mention:hover,
+.video-caption .mention:hover { text-decoration: underline; }
+.mention-all { color: #f59e0b !important; } /* all màu vàng amber để phân biệt */
 .comment-meta {
     display: flex;
     align-items: center;
@@ -551,7 +558,7 @@ body {
 }
 #comment-send-btn:hover { background: #e02050; transform: scale(1.05); }
 
-/* Mention dropdown */
+/* Mention dropdown — comment panel (hiện phía trên textarea) */
 #mention-dropdown {
     position: absolute;
     bottom: 100%;
@@ -563,6 +570,20 @@ body {
     overflow-y: auto;
     z-index: 200;
     margin-bottom: 4px;
+}
+/* Mention dropdown — caption upload modal (hiện phía dưới textarea) */
+#caption-mention-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0; right: 0;
+    background: #252525;
+    border: 1px solid #333;
+    border-radius: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 2000;
+    margin-top: 4px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
 }
 .mention-item {
     display: flex;
@@ -684,6 +705,7 @@ let commentPanelVideoId = null;
 let replyToCommentId = null;
 let mentionSearchActive = false;
 let mentionStartPos = 0;
+let activeMentionTextareaId = 'comment-input'; // textarea đang dùng mention
 let openMoreDropdown = null;
 
 const isLoggedIn = document.getElementById('pesoc-auth-status')?.getAttribute('data-logged-in') === 'true';
@@ -810,7 +832,7 @@ function renderFeed() {
                             : `<i class="fas fa-user text-secondary" style="font-size:0.9rem;"></i>`}
                     </div>
                     <div class="uploader-meta">
-                        <span class="uploader-name">@${v.uploader.username}</span>
+                        <span class="uploader-name">${v.uploader.username}</span>
                         <span class="uploader-time">Đã đăng ${timeAgo(v.createdAt)}</span>
                     </div>
                 </a>
@@ -1115,7 +1137,7 @@ function renderReplyItem(r) {
         <div class="comment-item reply-item" id="comment-${r.id}">
             <div class="comment-avatar reply-avatar">${avatarHtml}</div>
             <div class="comment-body">
-                <a href="/profile/${r.user.username}" class="comment-username reply-username">@${r.user.username}</a>
+                <a href="/profile/${r.user.username}" class="comment-username reply-username">${r.user.username}</a>
                 <div class="comment-text reply-text">${formatCaption(r.content)}</div>
                 <div class="comment-meta">
                     <span class="comment-time">${timeAgo(r.createdAt)}</span>
@@ -1156,7 +1178,7 @@ function renderCommentItem(c) {
         <div class="comment-item" id="comment-${c.id}">
             <div class="comment-avatar">${avatarHtml}</div>
             <div class="comment-body">
-                <a href="/profile/${c.user.username}" class="comment-username">@${c.user.username}</a>
+                <a href="/profile/${c.user.username}" class="comment-username">${c.user.username}</a>
                 <div class="comment-text">${formatCaption(c.content)}</div>
                 <div class="comment-meta">
                     <span class="comment-time">${timeAgo(c.createdAt)}</span>
@@ -1353,16 +1375,29 @@ async function submitUpload() {
 // ============================================================
 // @ MENTION AUTOCOMPLETE
 // ============================================================
+// Trả về dropdown đang active (comment hoặc caption)
+function getActiveMentionDropdown() {
+    return document.getElementById(
+        activeMentionTextareaId === 'upload-caption'
+            ? 'caption-mention-dropdown'
+            : 'mention-dropdown'
+    );
+}
+
 function handleCommentInput(textarea) {
-    // Auto resize textarea
-    textarea.style.height = 'auto';
-    textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
+    // Track textarea đang dùng mention
+    activeMentionTextareaId = textarea.id;
+
+    // Auto resize (chỉ áp dụng cho comment-input)
+    if (textarea.id === 'comment-input') {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
+    }
 
     const val = textarea.value;
     const pos = textarea.selectionStart;
 
-    // Tìm @ gần nhất trước cursor
-    // ​ (zero-width space) = dấu kết thúc mention đã hoàn thành → dừng tìm
+    // Tìm @ gần nhất trước cursor (​ = U+200B, dấu kết thúc mention đã chọn)
     let atPos = -1;
     for (let i = pos - 1; i >= 0; i--) {
         if (val[i] === '@') { atPos = i; break; }
@@ -1370,9 +1405,9 @@ function handleCommentInput(textarea) {
     }
 
     if (atPos >= 0) {
-        // Loại bỏ ​ thừa, trim trailing space (user có thể gõ @test rồi space)
         const query = val.substring(atPos + 1, pos).replace(/​/g, '').trimEnd();
-        if (query.length > 0 && query.length <= 30 && !/[@\n]/.test(query)) {
+        // Hiện dropdown kể cả khi query rỗng (vừa gõ @) — backend trả về tất cả user theo alphabet
+        if (query.length <= 30 && !/[@\n]/.test(query)) {
             mentionStartPos = atPos;
             searchMentionUsers(query);
         } else {
@@ -1396,7 +1431,7 @@ async function searchMentionUsers(q) {
 }
 
 function showMentionDropdown(users, query) {
-    const dropdown = document.getElementById('mention-dropdown');
+    const dropdown = getActiveMentionDropdown();
 
     const items = [];
 
@@ -1434,17 +1469,18 @@ function showMentionDropdown(users, query) {
 
 function closeMentionDropdown() {
     document.getElementById('mention-dropdown').style.display = 'none';
+    document.getElementById('caption-mention-dropdown').style.display = 'none';
 }
 
 function insertMention(username) {
-    const input = document.getElementById('comment-input');
+    const input = document.getElementById(activeMentionTextareaId);
     const val = input.value;
 
     // Kiểm tra username này đã được tag trong comment hiện tại chưa
     const zwsp = '​';
     if (val.includes(`@${username}${zwsp}`)) {
         // Hiển thị cảnh báo ngay trong dropdown, tự đóng sau 1.5s
-        const dropdown = document.getElementById('mention-dropdown');
+        const dropdown = getActiveMentionDropdown();
         dropdown.innerHTML = `
             <div class="mention-item" style="color:#f87171;pointer-events:none;gap:6px;">
                 <i class="fas fa-exclamation-circle"></i>
@@ -1467,7 +1503,7 @@ function insertMention(username) {
     input.focus();
 }
 
-// Enter to send (Shift+Enter = newline)
+// Enter to send (Shift+Enter = newline) + Escape đóng dropdown ở cả 2 textarea
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('comment-input')?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -1477,6 +1513,15 @@ document.addEventListener('DOMContentLoaded', () => {
             submitComment();
         }
         if (e.key === 'Escape') closeMentionDropdown();
+    });
+    document.getElementById('upload-caption')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeMentionDropdown();
+    });
+    // Click ngoài dropdown thì đóng
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#caption-mention-dropdown') && !e.target.closest('#upload-caption')) {
+            document.getElementById('caption-mention-dropdown').style.display = 'none';
+        }
     });
 });
 
@@ -1490,17 +1535,17 @@ function formatCaption(text) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 
-    // @all đặc biệt: màu vàng, không có profile link — xử lý TRƯỚC các pattern khác
+    // @all đặc biệt: màu vàng, không có profile link — xử lý TRƯỚC (hiện "@all")
     const allSpan = `<span class="mention mention-all" title="Thông báo tất cả người bình luận">@all</span>`;
     result = result.replace(/@all​/g, allSpan);          // format ZWSP
     result = result.replace(/@all(?=\s|<|$)/g, allSpan); // format plain
 
-    // Helper: tạo span mention có thể click → profile (chỉ dùng cho @username thường)
+    // Helper: span mention click → profile, KHÔNG có @ (chỉ hiện tên)
     const mentionSpan = (username) => {
         const clean = username.trim();
-        if (clean.toLowerCase() === 'all') return allSpan; // phòng thủ thêm
+        if (clean.toLowerCase() === 'all') return allSpan;
         const url = '/profile/' + encodeURIComponent(clean);
-        return `<span class="mention" onclick="event.stopPropagation();window.location.href='${url}'" title="Xem profile ${clean}" style="cursor:pointer;">@${clean}</span>`;
+        return `<span class="mention" onclick="event.stopPropagation();window.location.href='${url}'" title="Xem profile ${clean}" style="cursor:pointer;">${clean}</span>`;
     };
 
     // Format mới: @username​ (U+200B terminator) — hỗ trợ username có dấu cách

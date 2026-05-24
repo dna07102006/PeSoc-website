@@ -13,6 +13,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.LinkedHashSet;
 
 @Controller
 public class PesocTokController {
@@ -119,6 +120,9 @@ public class PesocTokController {
         // WebPush: gửi thông báo đẩy đến thiết bị của người theo dõi
         firebaseService.sendToSubscribers(logInUser.getUsername(), "PLAYER", notifTitle, notifBody, notifUrl);
 
+        // Xử lý @mention trong caption (in-app + WebPush)
+        handleCaptionMentions(caption, logInUser, video);
+
         return ResponseEntity.ok(Map.of("message", "Đăng video thành công!", "id", video.getId()));
     }
 
@@ -197,8 +201,13 @@ public class PesocTokController {
                           "ADMIN".equals(logInUser.getRole());
         if (!canEdit) return ResponseEntity.status(403).body(Map.of("error", "Bạn không có quyền sửa video này!"));
 
-        video.setCaption(body.getOrDefault("caption", ""));
+        String newCaption = body.getOrDefault("caption", "");
+        video.setCaption(newCaption);
         videoRepo.save(video);
+
+        // Xử lý @mention trong caption mới (in-app + WebPush)
+        handleCaptionMentions(newCaption, logInUser, video);
+
         return ResponseEntity.ok(Map.of("message", "Đã cập nhật caption!"));
     }
 
@@ -314,10 +323,11 @@ public class PesocTokController {
     // ============================================================
     @GetMapping("/api/pesoctok/mention-users")
     @ResponseBody
-    public ResponseEntity<?> mentionUsers(@RequestParam String q) {
-        if (q == null || q.isBlank()) return ResponseEntity.ok(List.of());
-        List<User> users = userRepo.searchUsers(q.toLowerCase());
-        List<Map<String, Object>> result = users.stream().limit(8).map(u -> {
+    public ResponseEntity<?> mentionUsers(@RequestParam(required = false, defaultValue = "") String q) {
+        List<User> users = (q == null || q.isBlank())
+            ? userRepo.findAllByOrderByUsernameAsc()   // @ không có query → trả về tất cả theo alphabet
+            : userRepo.searchUsers(q.toLowerCase());   // có query → lọc theo tên
+        List<Map<String, Object>> result = users.stream().limit(20).map(u -> {
             Map<String, Object> m = new HashMap<>();
             m.put("username", u.getUsername());
             m.put("avatar", u.getAvatar());
@@ -388,64 +398,97 @@ public class PesocTokController {
     }
 
     // ============================================================
-    // HELPER: Xử lý @mention trong bình luận
-    // Hỗ trợ 3 format:
-    //   1. @username​  — format mới, username có thể chứa dấu cách (U+200B là terminator vô hình)
-    //   2. @[username]      — format cũ (backward compat)
-    //   3. @simpleword      — mention chữ đơn truyền thống (backward compat)
+    // HELPER: Trích xuất tất cả username được @mention từ text
+    // Hỗ trợ 3 format: @username​ (ZWSP) | @[username] | @word
+    // ============================================================
+    private Set<String> extractMentions(String text) {
+        Set<String> usernames = new LinkedHashSet<>();
+        if (text == null || text.isBlank()) return usernames;
+
+        // Format 1: @username + U+200B (zero-width space terminator)
+        Matcher m1 = Pattern.compile("@([^​@\n]+)​").matcher(text);
+        while (m1.find()) usernames.add(m1.group(1).trim());
+
+        // Format 2: @[username] — backward compat
+        Matcher m2 = Pattern.compile("@\\[([^\\]]+)\\]").matcher(text);
+        while (m2.find()) usernames.add(m2.group(1).trim());
+
+        // Format 3: @simpleword — chạy trên text sau khi đã xóa format 1 & 2
+        String remaining = text
+            .replaceAll("@[^​@\n]+​", "")
+            .replaceAll("@\\[[^\\]]+\\]", "");
+        Matcher m3 = Pattern.compile("@(\\w+)").matcher(remaining);
+        while (m3.find()) usernames.add(m3.group(1));
+
+        return usernames;
+    }
+
+    // ============================================================
+    // HELPER: Gửi thông báo mention (dùng chung cho bình luận & caption)
+    // ============================================================
+    private void doSendMentionNotif(String username, String senderUsername,
+                                     String title, String body, String url, Set<String> mentioned) {
+        if (username == null || username.isEmpty()) return;
+        if (mentioned.contains(username)) return;
+        if (username.equalsIgnoreCase(senderUsername)) return;
+        if (userRepo.findByUsername(username) == null) return;
+        mentioned.add(username);
+        sendNotif(username, title, body, url); // sendNotif đã bao gồm WebPush
+    }
+
+    // ============================================================
+    // HELPER: Xử lý @mention trong BÌNH LUẬN (gồm cả @all)
     // ============================================================
     private void handleMentions(String content, User sender, PesocTokVideo video, Long commentId) {
         Set<String> mentioned = new HashSet<>();
+        String url   = "/pesoctok?v=" + video.getId() + "&c=" + commentId;
+        String title = sender.getUsername() + " đã nhắc đến bạn trong bình luận 📢";
+        String body  = truncate(content, 80);
 
         // --- @all: thông báo tất cả người đã bình luận trên video này ---
-        boolean hasAtAll = content.contains("@all​") || content.matches("(?s).*@all(\\s|$).*");
+        // Dùng (char)0x200B để tạo ZWSP tại runtime — không phụ thuộc encoding file source
+        // Frontend gửi @all + ZWSP + space → normalize ZWSP thành space trước khi check
+        String zwsp = String.valueOf((char) 0x200B);
+        String normalizedContent = content.replace(zwsp, " ");
+        boolean hasAtAll = normalizedContent.contains("@all ")
+                || normalizedContent.endsWith("@all");
         if (hasAtAll) {
-            List<User> commenters = commentRepo.findDistinctCommentersByVideo(video);
-            for (User commenter : commenters) {
-                doNotifyMention(commenter.getUsername(), sender, video, commentId, content, mentioned);
-            }
+            // @all → báo TẤT CẢ user trên hệ thống (trừ người gửi)
+            userRepo.findAll().forEach(u ->
+                doSendMentionNotif(u.getUsername(), sender.getUsername(), title, body, url, mentioned));
         }
 
-        // --- Format 1: @username + U+200B (zero-width space) — bỏ qua "all" đã xử lý trên ---
-        Pattern zwspPattern = Pattern.compile("@([^​@\n]+)​");
-        Matcher m1 = zwspPattern.matcher(content);
-        while (m1.find()) {
-            String u = m1.group(1).trim();
-            if (!u.equalsIgnoreCase("all")) doNotifyMention(u, sender, video, commentId, content, mentioned);
-        }
-
-        // --- Format 2: @[username] (backward compat) ---
-        Pattern bracketPattern = Pattern.compile("@\\[([^\\]]+)\\]");
-        Matcher m2 = bracketPattern.matcher(content);
-        while (m2.find()) {
-            String u = m2.group(1).trim();
-            if (!u.equalsIgnoreCase("all")) doNotifyMention(u, sender, video, commentId, content, mentioned);
-        }
-
-        // --- Format 3: @simpleword (backward compat) ---
-        String remaining = content
-            .replaceAll("@[^​@\n]+​", "")
-            .replaceAll("@\\[[^\\]]+\\]", "");
-        Pattern simplePattern = Pattern.compile("@(\\w+)");
-        Matcher m3 = simplePattern.matcher(remaining);
-        while (m3.find()) {
-            String u = m3.group(1);
-            if (!u.equalsIgnoreCase("all")) doNotifyMention(u, sender, video, commentId, content, mentioned);
-        }
+        // --- Mention cá nhân ---
+        extractMentions(content).stream()
+            .filter(u -> !u.equalsIgnoreCase("all"))
+            .forEach(u -> doSendMentionNotif(u, sender.getUsername(), title, body, url, mentioned));
     }
 
-    private void doNotifyMention(String username, User sender, PesocTokVideo video,
-                                  Long commentId, String content, Set<String> mentioned) {
-        if (username == null || username.isEmpty()) return;
-        if (mentioned.contains(username)) return;
-        if (username.equalsIgnoreCase(sender.getUsername())) return;
-        User mentionedUser = userRepo.findByUsername(username);
-        if (mentionedUser == null) return;
-        mentioned.add(username);
-        sendNotif(username,
-            sender.getUsername() + " đã nhắc đến bạn trong bình luận 📢",
-            truncate(content, 80),
-            "/pesoctok?v=" + video.getId() + "&c=" + commentId);
+    // ============================================================
+    // HELPER: Xử lý @mention trong CAPTION video (upload & edit)
+    // ============================================================
+    private void handleCaptionMentions(String caption, User uploader, PesocTokVideo video) {
+        if (caption == null || caption.isBlank()) return;
+        Set<String> mentioned = new HashSet<>();
+        String url   = "/pesoctok?v=" + video.getId();
+        String title = uploader.getUsername() + " đã nhắc đến bạn trong video 📢";
+        String body  = truncate(caption, 80);
+
+        // Kiểm tra @all trong caption — cùng logic với handleMentions
+        String zwsp = String.valueOf((char) 0x200B);
+        String normalizedCaption = caption.replace(zwsp, " ");
+        boolean hasAtAll = normalizedCaption.contains("@all ")
+                || normalizedCaption.endsWith("@all");
+        if (hasAtAll) {
+            // @all → báo TẤT CẢ user trên hệ thống (trừ người đăng video)
+            userRepo.findAll().forEach(u ->
+                doSendMentionNotif(u.getUsername(), uploader.getUsername(), title, body, url, mentioned));
+        }
+
+        // Mention cá nhân (bỏ qua "all" vì đã xử lý ở trên)
+        extractMentions(caption).stream()
+            .filter(u -> !u.equalsIgnoreCase("all"))
+            .forEach(u -> doSendMentionNotif(u, uploader.getUsername(), title, body, url, mentioned));
     }
 
     private String truncate(String str, int maxLen) {
