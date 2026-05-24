@@ -1224,9 +1224,11 @@ function setReplyTo(commentId, username) {
     if (!isLoggedIn) { showLoginHint(); return; }
     replyToCommentId = commentId;
     document.getElementById('reply-indicator').style.display = 'flex';
-    document.getElementById('reply-to-text').textContent = `Đang trả lời @${username}`;
+    document.getElementById('reply-to-text').textContent = `Đang trả lời ${username}`;
     const input = document.getElementById('comment-input');
-    input.value = `@${username} `;
+    // Dùng ZWSP (​) làm terminator để backend nhận ra đúng mention (kể cả username có dấu cách)
+    const zwsp = '​';
+    input.value = `@${username}${zwsp} `;
     input.focus();
     // Đặt con trỏ vào cuối
     const len = input.value.length;
