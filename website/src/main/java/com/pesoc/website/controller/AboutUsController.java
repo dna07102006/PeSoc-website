@@ -31,6 +31,7 @@ public class AboutUsController {
         model.addAttribute("user9", userRepository.findByUsername("Đạt"));
         model.addAttribute("user10", userRepository.findByUsername("Triệu"));
         model.addAttribute("user11", userRepository.findByUsername("Hưng Lê"));
+        model.addAttribute("user12", userRepository.findByUsername("Đăng"));
         return "about-us";
     }
 }

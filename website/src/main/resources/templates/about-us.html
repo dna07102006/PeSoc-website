@@ -259,6 +259,17 @@
                 <div class="team-role">Bet developer</div>
             </div>
 
+            <div th:if="${user12 != null}" class="team-card">
+                <a th:href="@{'/profile/' + ${user11.username}}" class="team-profile-link">
+                    <div class="team-avatar">
+                        <img th:if="${user12.avatar != null}" th:src="@{'/uploads/avatars/' + ${user12.avatar}}">
+                        <i th:if="${user12.avatar == null}" class="fas fa-user"></i>
+                    </div>
+                    <div class="team-name" th:text="${user12.username}"></div>
+                </a>
+                <div class="team-role">Nhà sáng tạo mới nổi</div>
+            </div>
+
             <div class="team-card">
                 <a href="#" class="team-profile-link">
                     <div class="team-avatar">
