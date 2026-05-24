@@ -261,13 +261,28 @@ public class PesocTokController {
 
         commentRepo.save(comment);
 
+        String notifUrl = "/pesoctok?v=" + videoId + "&c=" + comment.getId();
+
         // Thông báo cho chủ video khi có người bình luận
         String videoOwner = videoOpt.get().getUploader().getUsername();
         if (!videoOwner.equals(logInUser.getUsername())) {
             sendNotif(videoOwner,
                 logInUser.getUsername() + " đã bình luận video của bạn 💬",
                 truncate(content, 80),
-                "/pesoctok?v=" + videoId + "&c=" + comment.getId());
+                notifUrl);
+        }
+
+        // Thông báo riêng cho chủ comment gốc khi có người reply
+        if (parentId != null) {
+            commentRepo.findById(parentId).ifPresent(parentComment -> {
+                String parentOwner = parentComment.getUser().getUsername();
+                if (!parentOwner.equals(logInUser.getUsername()) && !parentOwner.equals(videoOwner)) {
+                    sendNotif(parentOwner,
+                        logInUser.getUsername() + " đã trả lời bình luận của bạn 💬",
+                        truncate(content, 80),
+                        notifUrl);
+                }
+            });
         }
 
         // Xử lý @mention - gửi thông báo cho user được tag
